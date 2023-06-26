@@ -9,6 +9,8 @@
 
 ## Search Engine Structure
 1. Crawler: Crawls the web for documents starting from the frontier
+    - Create Frontier
+       - Uni-tuebingen.de 
     - Store page-specific update frequencies in the frontier (Necessary?)!
     - Consider Access control (robots.txt)
     - Duplicate detection (exact and near duplicates)
@@ -34,7 +36,6 @@
 ## TODOs
 - Plan
 - Finish Crawler
-
 - Choose Frontier
 - Indexing Method
 - Matching
