@@ -18,6 +18,7 @@
       - [ ] Simhash
       - [ ] Autoencoders
 3. Indexing: Saving the crawled content. Optimizing speed and performance in finding relevant documents for a search query so the search engine does not have to scan every document in the corpus & Matching query and document
+     - Index selection mit PageRank? (Prüfen ob Document in den Index sollte)
      - Contentprüfung
      - Text representation
        - if necessary: Lower-Casing, Removing Stop words (exchanging . for <end> token)
@@ -28,7 +29,6 @@
        - Contextual embedding (Transformer)
          - [ ] Transformer Memory as a Differentiable Search Index
 5. Retrieval & Ranking: Process of reading the index and returning the desired results
-    - PageRank
     - Conv-KNRM
     - Col-Bert
 6. Search Engine Interface (Communicates with 3. and 4.)
