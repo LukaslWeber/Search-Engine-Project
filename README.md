@@ -17,6 +17,7 @@
     - Duplicate detection (exact and near duplicates)
       - [ ] Simhash
       - [ ] Autoencoders
+    - Relevanz von Websites checken
 3. Indexing: Saving the crawled content. Optimizing speed and performance in finding relevant documents for a search query so the search engine does not have to scan every document in the corpus & Matching query and document
      - Index selection mit PageRank? (Prüfen ob Document in den Index sollte)
      - Contentprüfung
