@@ -9,7 +9,7 @@
 
 ## Search Engine Structure
 1. Crawler: Crawls the web for documents starting from the frontier
-2. Indexing: 
+2. Indexing: Optimizing speed and performance in finding relevant documents for a search query so the search engine does not have to scan every document in the corpus
 3. Matching Query and Documents & Ranking
 4. Search Engine Interface
 5. What about Fairness and Bias? (Part of the Slides about the project phase)
