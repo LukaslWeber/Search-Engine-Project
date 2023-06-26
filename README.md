@@ -44,5 +44,11 @@
 - Ranking
 - Interface
 
+## Requirements
+- Python 3.xx
+- Pytorch
+- NLTK
+
+
 ## Keep in Mind:
 - Pipeline (processing) applied to all documents needs to be applied to the queries, too
