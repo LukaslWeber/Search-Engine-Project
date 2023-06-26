@@ -36,7 +36,6 @@
 7. ((What about Fairness and Bias? (Part of the Slides about the project phase)))
 
 ## TODOs
-- Plan
 - Finish Crawler
 - Choose Frontier
 - Indexing Method
