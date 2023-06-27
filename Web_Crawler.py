@@ -1,13 +1,12 @@
 import time
 from typing import List
 
-from nltk import word_tokenize, pos_tag
 import nltk
-
-nltk.download('stopwords')
-nltk.download('averaged_perceptron_tagger')
+from nltk import word_tokenize, pos_tag
+#nltk.download('stopwords')
 from nltk.corpus import stopwords
 
+from py3langid.langid import LanguageIdentifier, MODEL_FILE
 import numpy as np
 import re
 
@@ -19,7 +18,7 @@ import re
 # TODO: Read about a "Focused Crawler"
 # TODO: HTTP-Anfrage starten
 # TODO: Was mit deutschen Seiten die keinen englischen Content haben?
-# TODO: Sicherstellen, dass wir auf der englischen Seite bleiben
+# Sicherstellen, dass wir auf der englischen Seite bleiben --> Rufe detect_language auf und checke ob die Sprache en ist
 
 class Web_Crawler():
 
@@ -34,6 +33,9 @@ class Web_Crawler():
         self.max_pages = max_pages
         self.frontier = frontier
         self.use_index_from_file = use_index_from_file
+        # Language identifier for checking the language of a document
+        self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
+        self.identifier.set_languages(['de', 'en', 'fr'])
 
     def crawl(self, frontier, index):
         """
@@ -75,6 +77,25 @@ class Web_Crawler():
 
         return False
 
+    def detect_language(self, text):
+        """
+        Method that detects the language that was used in a document to prevent German and documents of other languages to get into our index
+        :param text: The text that is to be classified into a language
+        :return: Shortcut for the text language, e.g. 'de', 'en', ...
+        """
+        try:
+            detected_languages = {}
+            for sentence in text.split('.'):  # Split text into sentences
+                lang, confidence = self.identifier.classify(sentence)
+                if confidence >= 0.5:  # Set a confidence threshold
+                    detected_languages[lang] = detected_languages.get(lang, 0) + 1
 
+            print(detected_languages)
+            lang_with_most_sentences = max(detected_languages, key=detected_languages.get)
+            return lang_with_most_sentences
+
+        except Exception as e:
+            print(f"Some error occured during language detection of the string: {str(e)}")
+            return None
 
 test_crawler = Web_Crawler(["abc", "aaa"], 10, True)
