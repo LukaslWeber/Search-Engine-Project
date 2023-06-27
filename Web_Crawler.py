@@ -1,17 +1,29 @@
 import time
 from typing import List
 
+from nltk import word_tokenize, pos_tag
+import nltk
+
+nltk.download('stopwords')
+nltk.download('averaged_perceptron_tagger')
+from nltk.corpus import stopwords
+
 import numpy as np
 import re
+
+
 # Crawl the web to discover English content related to Tübingen.
 # The crawled content should be stored locally.
 # If interrupted, your crawler should be able to re-start the crawling process at any time.
 
 # TODO: Read about a "Focused Crawler"
+# TODO: HTTP-Anfrage starten
+# TODO: Was mit deutschen Seiten die keinen englischen Content haben?
+# TODO: Sicherstellen, dass wir auf der englischen Seite bleiben
 
-class Web_Cralwer():
+class Web_Crawler():
 
-    def __init__(self, frontier : List[str], max_pages, use_index_from_file):
+    def __init__(self, frontier: List[str], max_pages, use_index_from_file):
         """
         Initializes the Crawler object with a frontier and a maximum number of pages to be crawled
         :param frontier: np.ndarray of urls (Strings)
@@ -30,23 +42,24 @@ class Web_Cralwer():
         :param index: The location of the local index storing the discovered documents.
         :return:
         """
-        #TODO: Implement me
+        # TODO: Implement me
         pass
 
-    def index(self, doc : str, index):
+    def index(self, doc: str, index):
         """
         Add a document to the index. You need (at least) two parameters:
         :param doc: The document to be indexed
         :param index: The location of the local index storing the discovered documents.
         :return:
         """
-        #TODO: Implement me
+        # TODO: Implement me
         pass
 
-    def is_relevant(self, response_text : str, url : str):
+    def is_relevant(self, response_text: str, url: str):
         """
         Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
         The uppercase should be ignored here
+        :param response_text:
         :param url: URL of the webpage to check
         :return: True if the webpage is relevant, False otherwise
         """
@@ -55,12 +68,13 @@ class Web_Cralwer():
         tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
 
         if tübingen_regexp.search(response_text) \
-            or tübingen_regexp.search(url) \
-            or tuebingen_regexp.search(response_text) \
-            or tuebingen_regexp.search(url):
+                or tübingen_regexp.search(url) \
+                or tuebingen_regexp.search(response_text) \
+                or tuebingen_regexp.search(url):
             return True
 
         return False
 
 
-test_crawler = Web_Cralwer(["abc", "aaa"], 10, True)
+
+test_crawler = Web_Crawler(["abc", "aaa"], 10, True)
