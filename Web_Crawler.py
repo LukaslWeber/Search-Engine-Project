@@ -13,7 +13,6 @@ import urllib3
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
-
 # Crawl the web to discover English content related to Tübingen.
 # The crawled content should be stored locally.
 # If interrupted, your crawler should be able to re-start the crawling process at any time.
@@ -24,25 +23,32 @@ from bs4 import BeautifulSoup
 # Sicherstellen, dass wir auf der englischen Seite bleiben --> Rufe detect_language auf und checke ob die Sprache en ist
 # TODO: Priority Queue in der Englischer Content vorne steht
 # TODO: Duplicate Detections
+# TODO: Den Inhalt der Website vielleicht besser lesen. Jetzt fehlen teilweise Leerzeichen, ist zeug von der oberen Leiste drin etc.
 
 class Web_Crawler():
 
-    def __init__(self, frontier: List[str], max_pages, use_index_from_file):
+    def __init__(self, max_pages, frontier: List[str] = None):
         """
         Initializes the Crawler object with a frontier and a maximum number of pages to be crawled
         :param frontier: np.ndarray of urls (Strings)
         :param max_pages: Number indicating the maximum number of webpages to be crawled
         :param use_index_from_file: Indicates whether the Index exists in the RAM (False) or in a file (True)
         """
-        self.visited = set()
+        # TODO: If frontier is none -> The past search needs to be continued (make sure that there was a past search)
+        # For this load the text file with the links
+        # If it is a list with strings then put them into a text file where we safe it
+        if frontier == None:
+            pass
+        else:
+            self.visited = set()
+            pass
         self.max_pages = max_pages
         self.frontier = frontier
-        self.use_index_from_file = use_index_from_file
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         self.identifier.set_languages(['de', 'en', 'fr'])
 
-    def crawl(self, frontier, index):
+    def crawl(self, frontier : List[str], index : int):
         """
         Crawl the web
         :param frontier: The frontier of known URLs to crawl. You will initially populate this with your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
@@ -52,7 +58,7 @@ class Web_Crawler():
         # TODO: Implement me
         pass
 
-    def index(self, doc: str, index):
+    def index(self, doc: str, index : int):
         """
         Add a document to the index. You need (at least) two parameters:
         :param doc: The document to be indexed
@@ -82,7 +88,7 @@ class Web_Crawler():
 
         return False
 
-    def detect_language(self, text):
+    def detect_language(self, text : str):
         """
         Method that detects the language that was used in a document to prevent German and documents of other languages to get into our index
         :param text: The text that is to be classified into a language
@@ -103,14 +109,24 @@ class Web_Crawler():
             print(f"Some error occured during language detection of the string: {str(e)}")
             return None
 
-test_crawler = Web_Crawler(["abc", "aaa"], 10, True)
-
-def get_base_url(url):
+def get_base_url(url : str):
+    """
+    Method that strips the given URL and returns only the base part of the URL.
+    Example: https://www.tuebingen.de/blumenschmuck -> https://www.tuebingen.de
+    :param url:
+    :return:
+    """
     parsed_url = urlparse(url)
     base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
     return base_url
 
-def get_url_content(url):
+def get_web_content_and_urls(url : str):
+    """
+    Method that sends a http request with the given URL and gives the contained content and URLs back
+    :param url: URL of the website that should be retrieved
+    :return: links, content
+    """
+    # TODO: Was passiert wenn die HTTP Anfrage nicht klappt?
     http = urllib3.PoolManager()
     with http.request('GET', url, preload_content=False) as response:
         # Stream the response data in chunks
@@ -122,35 +138,46 @@ def get_url_content(url):
     # Create a BeautifulSoup object to parse the HTML content
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Extract all the <a> tags for links
-    links = [a['href'] for a in soup.find_all('a', href=True)]
-    print(links)
-
-# TOD: Ftler#contet rau
-
+    # Extract all the <a> html-tags for links IF they don't start with # because those are usually internal links
+    # within a webpage (anchor links) and also don't include JavaScript links because they often execute a JavaScript
+    # script or are not relevant here
+    links = [a['href'] for a in soup.find_all('a', href=True)
+             if not a['href'].startswith(('#', 'javascript:'))]
+    # Some links are given in an absolute (http...) form and some are given in a relative form (/example...).
+    # The latter need to be transformed
     links = get_absolute_links(url, links)
-
     content = soup.get_text()
+    print(content)
+    print(soup.find_all(text=True))
 
-    print(links)
+    return links, content
 
-def get_absolute_links(url, links):
+def get_absolute_links(url : str, links : List[str]):
+    """
+    Method that returns absolute links for a list of absolute and/or relative links
+    :param url: The website url that is origin of all received links
+    :param links: List of links that were retrieved from the url
+    :return: A list of Strings (URLs) which contains only absolute links which are directly callable
+    """
     base_url = get_base_url(url)
     absolute_links = set()
     for link in links:
+        # If link is relative then join it with the base page url
         absolute_link = link if link.startswith(('http://', 'https://')) else urljoin(base_url, link)
+        # Only add the page if it is not the page that was used to retrieve all the links to prevent unnecessary
+        # requests
         if absolute_link != url and absolute_link != base_url:
             absolute_links.add(absolute_link)
     return list(absolute_links)
 
 
-response = get_url_content("https://www.tuebingen.de/14101.html")
+response = get_web_content_and_urls("https://www.tuebingen.de/14101.html")
 
 #response = get_url_content("https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/autonomous-vision/lectures/computer-vision/")
-print(response)
+#print(response)
 
-ponse = get_url_content("https://www.tuebingen.de/14101.html#content")
-print(response)
+#links, content = get_url_content("https://www.w3schools.com/videos/index.php")
+
 
 
 print(get_absolute_links("https://www.tuebingen.de/", ["https://www.tuebingen.de/", "https://www.tuebingen.de", "https://www.tuebingen.de/#content"]))
