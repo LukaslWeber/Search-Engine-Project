@@ -9,6 +9,9 @@ from nltk.corpus import stopwords
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
 import numpy as np
 import re
+import urllib3
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
 
 
 # Crawl the web to discover English content related to Tübingen.
@@ -19,6 +22,8 @@ import re
 # TODO: HTTP-Anfrage starten
 # TODO: Was mit deutschen Seiten die keinen englischen Content haben?
 # Sicherstellen, dass wir auf der englischen Seite bleiben --> Rufe detect_language auf und checke ob die Sprache en ist
+# TODO: Priority Queue in der Englischer Content vorne steht
+# TODO: Duplicate Detections
 
 class Web_Crawler():
 
@@ -66,11 +71,11 @@ class Web_Crawler():
         :return: True if the webpage is relevant, False otherwise
         """
 
-        tübingen_regexp = re.compile(r"Tübingen", re.IGNORECASE)
+        tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
         tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
 
-        if tübingen_regexp.search(response_text) \
-                or tübingen_regexp.search(url) \
+        if tuebingen_umlaut_regexp.search(response_text) \
+                or tuebingen_umlaut_regexp.search(url) \
                 or tuebingen_regexp.search(response_text) \
                 or tuebingen_regexp.search(url):
             return True
@@ -99,3 +104,53 @@ class Web_Crawler():
             return None
 
 test_crawler = Web_Crawler(["abc", "aaa"], 10, True)
+
+def get_base_url(url):
+    parsed_url = urlparse(url)
+    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    return base_url
+
+def get_url_content(url):
+    http = urllib3.PoolManager()
+    with http.request('GET', url, preload_content=False) as response:
+        # Stream the response data in chunks
+        content = b""
+        for chunk in response.stream(4096):
+            content += chunk
+    html_content = content.decode('utf-8')
+
+    # Create a BeautifulSoup object to parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Extract all the <a> tags for links
+    links = [a['href'] for a in soup.find_all('a', href=True)]
+    print(links)
+
+# TOD: Ftler#contet rau
+
+    links = get_absolute_links(url, links)
+
+    content = soup.get_text()
+
+    print(links)
+
+def get_absolute_links(url, links):
+    base_url = get_base_url(url)
+    absolute_links = set()
+    for link in links:
+        absolute_link = link if link.startswith(('http://', 'https://')) else urljoin(base_url, link)
+        if absolute_link != url and absolute_link != base_url:
+            absolute_links.add(absolute_link)
+    return list(absolute_links)
+
+
+response = get_url_content("https://www.tuebingen.de/14101.html")
+
+#response = get_url_content("https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/autonomous-vision/lectures/computer-vision/")
+print(response)
+
+ponse = get_url_content("https://www.tuebingen.de/14101.html#content")
+print(response)
+
+
+print(get_absolute_links("https://www.tuebingen.de/", ["https://www.tuebingen.de/", "https://www.tuebingen.de", "https://www.tuebingen.de/#content"]))
