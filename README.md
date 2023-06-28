@@ -5,7 +5,7 @@
  - Lukas Weber
  - Dana Rapp
  - Simon ...
- - Max ...
+ - Maximilian Jaques
 
 ## Search Engine Structure
 1. Crawler: Crawls the web for documents starting from the frontier
