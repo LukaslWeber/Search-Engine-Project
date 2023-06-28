@@ -71,6 +71,9 @@ class Web_Crawler():
             # get page content and page language
             page_links = get_web_content_and_urls(url)[0]
             page_content = get_web_content_and_urls(url)[1]
+            if page_links == "" and page_content == "":
+              continue
+
             page_language = self.detect_language(page_content) 
 
             # Skip if the URL has already been visited or if the page content is topic irrelevant
@@ -186,32 +189,49 @@ def get_web_content_and_urls(url : str):
     # TODO: Was passiert wenn die HTTP Anfrage nicht klappt?
     # vorläufige lösung: vor dem extrahieren prüfen ob url valide ()
     #http = urllib3.PoolManager(max_redirects=3)
+    max_retries = 3
+    retry_delay = 5
     retry = urllib3.Retry(total=3, redirect=3)
+    timeout = urllib3.Timeout(connect=2.0, read=2.0)
 
-# Create a PoolManager with the Retry object
-    http = urllib3.PoolManager(retries=retry)
 
-    with http.request('GET', url, preload_content=False) as response:
-        # Stream the response data in chunks
-        content = b""
-        for chunk in response.stream(4096):
-            content += chunk
-    html_content = content.decode('utf-8')
+    # Create a PoolManager with the Retry object
+    http = urllib3.PoolManager(retries=retry, timeout = timeout)
 
-    # Create a BeautifulSoup object to parse the HTML content
-    soup = BeautifulSoup(html_content, 'html.parser')
+    content = b""
+    links = ""
+    content = ""
+    for retry in range(max_retries):
+        try:
+            with http.request('GET', url, preload_content=False) as response:
+                # Stream the response data in chunks
+                content =b""
+                for chunk in response.stream(4096):
+                    content += chunk
+                    
+            break  # Break out of the retry loop if the request is successful
+        except Exception as e:
+            print(f"Attempt {retry+1} failed. Retrying after {retry_delay} seconds., exception: {e}")
+            time.sleep(retry_delay)
 
-    # Extract all the <a> html-tags for links IF they don't start with # because those are usually internal links
-    # within a webpage (anchor links) and also don't include JavaScript links because they often execute a JavaScript
-    # script or are not relevant here
-    links = [a['href'] for a in soup.find_all('a', href=True)
-             if not a['href'].startswith(('#', 'javascript:'))]
-    # Some links are given in an absolute (http...) form and some are given in a relative form (/example...).
-    # The latter need to be transformed
-    links = get_absolute_links(url, links)
-    content = soup.get_text()
-    #print(content)
-    #print(soup.find_all(text=True))
+    if content != "":
+
+        html_content = content.decode('utf-8')
+
+        # Create a BeautifulSoup object to parse the HTML content
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        # Extract all the <a> html-tags for links IF they don't start with # because those are usually internal links
+        # within a webpage (anchor links) and also don't include JavaScript links because they often execute a JavaScript
+        # script or are not relevant here
+        links = [a['href'] for a in soup.find_all('a', href=True)
+                if not a['href'].startswith(('#', 'javascript:'))]
+        # Some links are given in an absolute (http...) form and some are given in a relative form (/example...).
+        # The latter need to be transformed
+        links = get_absolute_links(url, links)
+        content = soup.get_text()
+        #print(content)
+        #print(soup.find_all(text=True))
 
     return links, content
 
@@ -252,7 +272,7 @@ def get_absolute_links(url : str, links : List[str]):
 #just testing
 urls = ['https://uni-tuebingen.de/en/', 'https://www.tuebingen.mpg.de/en']
 crawler = Web_Crawler(max_pages=5, frontier=urls)
-#crawler.crawl(frontier=crawler.frontier, index=1)
+crawler.crawl(frontier=crawler.frontier, index=1)
 
 # Print the visited URLs to verify the crawling process
 #print("Visited URLs:")
