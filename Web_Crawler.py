@@ -1,5 +1,6 @@
 import time
 from typing import List
+from queue import PriorityQueue
 
 import nltk
 from nltk import word_tokenize, pos_tag
@@ -12,6 +13,9 @@ import re
 import urllib3
 from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
+
+from urllib.parse import urlparse
+
 
 # Crawl the web to discover English content related to Tübingen.
 # The crawled content should be stored locally.
@@ -47,7 +51,7 @@ class Web_Crawler():
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         self.identifier.set_languages(['de', 'en', 'fr'])
-
+    
     def crawl(self, frontier : List[str], index : int):
         """
         Crawl the web
@@ -55,9 +59,46 @@ class Web_Crawler():
         :param index: The location of the local index storing the discovered documents.
         :return:
         """
-        # TODO: Implement me
-        pass
+        num_pages_crawled = 0
+        #initialize priority queue and add seed urls (english documents: priority 1, german documents:priority 2, all other documents: priority 3)
+        pq_frontier = PriorityQueue()
+        for doc in frontier:
+             pq_frontier.put((1,doc))
 
+        while pq_frontier and num_pages_crawled < self.max_pages:
+            # get next URL from the frontier
+            _,url = pq_frontier.get()
+            # get page content and page language
+            page_links = get_web_content_and_urls(url)[0]
+            page_content = get_web_content_and_urls(url)[1]
+            page_language = self.detect_language(page_content) 
+
+            # Skip if the URL has already been visited or if the page content is topic irrelevant
+            if url in self.visited or not self.is_relevant(page_content, url):
+                continue
+
+            # add document to collection if its language is english
+            if page_language == 'en':
+                self.add_to_collection(url)
+            
+            # Mark the URL as visited
+            self.visited.add(url)
+            num_pages_crawled += 1
+            print('crawled:')
+            print(num_pages_crawled)
+
+            # Add newly discovered URLs to the frontier, assign priorities 1 to english content, 2 to german content, 3 otherwise
+            for link in page_links:
+                language = self.detect_language(get_web_content_and_urls(link)[1])
+                if language == 'en':
+                    priority = 1
+                elif language == 'de':
+                    priority = 2
+                else:
+                    priority = 3
+                pq_frontier.put((priority, link))
+
+ 
     def index(self, doc: str, index : int):
         """
         Add a document to the index. You need (at least) two parameters:
@@ -87,6 +128,10 @@ class Web_Crawler():
             return True
 
         return False
+    
+    def add_to_collection(self, url: str):
+        #TODO: implement me
+        pass
 
     def detect_language(self, text : str):
         """
@@ -127,7 +172,9 @@ def get_web_content_and_urls(url : str):
     :return: links, content
     """
     # TODO: Was passiert wenn die HTTP Anfrage nicht klappt?
+
     http = urllib3.PoolManager()
+
     with http.request('GET', url, preload_content=False) as response:
         # Stream the response data in chunks
         content = b""
@@ -147,8 +194,8 @@ def get_web_content_and_urls(url : str):
     # The latter need to be transformed
     links = get_absolute_links(url, links)
     content = soup.get_text()
-    print(content)
-    print(soup.find_all(text=True))
+    #print(content)
+    #print(soup.find_all(text=True))
 
     return links, content
 
@@ -171,7 +218,7 @@ def get_absolute_links(url : str, links : List[str]):
     return list(absolute_links)
 
 
-response = get_web_content_and_urls("https://www.tuebingen.de/14101.html")
+#response = get_web_content_and_urls("https://www.tuebingen.de/14101.html")
 
 #response = get_url_content("https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/autonomous-vision/lectures/computer-vision/")
 #print(response)
@@ -180,4 +227,34 @@ response = get_web_content_and_urls("https://www.tuebingen.de/14101.html")
 
 
 
-print(get_absolute_links("https://www.tuebingen.de/", ["https://www.tuebingen.de/", "https://www.tuebingen.de", "https://www.tuebingen.de/#content"]))
+
+#print(get_absolute_links("https://www.tuebingen.de/", ["https://www.tuebingen.de/", "https://www.tuebingen.de", "https://www.tuebingen.de/#content"]))
+
+
+
+#-----------------------------
+#just testing
+urls = ['https://uni-tuebingen.de/en/', 'https://www.tuebingen.mpg.de/en']
+crawler = Web_Crawler(max_pages=5, frontier=urls)
+crawler.crawl(frontier=crawler.frontier, index=1)
+
+# Print the visited URLs to verify the crawling process
+#print("Visited URLs:")
+#for url in crawler.visited:
+ #   print(url)
+
+# Check the content of the collection to verify indexing
+#print("Collection:")
+# TODO: Implement the logic to retrieve and display the indexed documents from the index location
+
+# Test other methods as needed
+#url = 'https://www.example.com'
+#relevant = crawler.is_relevant(url)
+#print(f"Is URL {url} relevant? {relevant}")
+
+#text = "This is an example text."
+#language = crawler.detect_language(text)
+#print(f"Detected language: {language}")
+#print(crawler.detect_language((1,'hi')))
+#print(is_valid_url('hey'))
+
