@@ -60,7 +60,7 @@ class Web_Crawler():
         :return:
         """
         num_pages_crawled = 0
-        #initialize priority queue and add seed urls (english documents: priority 1, german documents:priority 2, all other documents: priority 3)
+        #initialize priority queue and add base urls (english documents: priority 1, german documents:priority 2, all other documents: priority 3)
         pq_frontier = PriorityQueue()
         for doc in frontier:
              pq_frontier.put((1,doc))
@@ -77,9 +77,9 @@ class Web_Crawler():
             if url in self.visited or not self.is_relevant(page_content, url):
                 continue
 
-            # add document to collection if its language is english
+            #add document to collection if its language is english
             if page_language == 'en':
-                self.add_to_collection(url)
+               self.add_to_collection(url)
             
             # Mark the URL as visited
             self.visited.add(url)
@@ -89,6 +89,9 @@ class Web_Crawler():
 
             # Add newly discovered URLs to the frontier, assign priorities 1 to english content, 2 to german content, 3 otherwise
             for link in page_links:
+                #check if url is valid (to prevent http request fails)
+                if not is_valid_url(link):
+                    continue
                 language = self.detect_language(get_web_content_and_urls(link)[1])
                 if language == 'en':
                     priority = 1
@@ -154,6 +157,15 @@ class Web_Crawler():
             print(f"Some error occured during language detection of the string: {str(e)}")
             return None
 
+#checks if given url is valid (considered valid if host and port components are present)       
+def is_valid_url(url):
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
+
 def get_base_url(url : str):
     """
     Method that strips the given URL and returns only the base part of the URL.
@@ -172,8 +184,12 @@ def get_web_content_and_urls(url : str):
     :return: links, content
     """
     # TODO: Was passiert wenn die HTTP Anfrage nicht klappt?
+    # vorläufige lösung: vor dem extrahieren prüfen ob url valide ()
+    #http = urllib3.PoolManager(max_redirects=3)
+    retry = urllib3.Retry(total=3, redirect=3)
 
-    http = urllib3.PoolManager()
+# Create a PoolManager with the Retry object
+    http = urllib3.PoolManager(retries=retry)
 
     with http.request('GET', url, preload_content=False) as response:
         # Stream the response data in chunks
@@ -236,7 +252,7 @@ def get_absolute_links(url : str, links : List[str]):
 #just testing
 urls = ['https://uni-tuebingen.de/en/', 'https://www.tuebingen.mpg.de/en']
 crawler = Web_Crawler(max_pages=5, frontier=urls)
-crawler.crawl(frontier=crawler.frontier, index=1)
+#crawler.crawl(frontier=crawler.frontier, index=1)
 
 # Print the visited URLs to verify the crawling process
 #print("Visited URLs:")
