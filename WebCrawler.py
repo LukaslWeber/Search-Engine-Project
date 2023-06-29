@@ -17,17 +17,20 @@ from File_loader import load_frontier, load_visited_pages
 # The crawled content should be stored locally.
 # If interrupted, your crawler should be able to re-start the crawling process at any time.
 
-# TODO: Read about a "Focused Crawler"
+#  TODO: Read about a "Focused Crawler"
 #  DONE: HTTP-Anfrage starten
+#  DONE: Was passiert wenn http Anfrage nicht klappt?
 #  TODO: Was mit deutschen Seiten die keinen englischen Content haben?
 #           --> Könnte man übersetzen Sicherstellen, dass wir auf der englischen Seite bleiben oder
 #           deutsche auf niedrigere PRIOO setzen --> Rufe detect_language auf und checke ob die Sprache en ist
 # TODO: Priority Queue in der Englischer Content vorne steht Vielleicht:
-#           1. TÜBINGEN & ENGLISCH 2. Tübingen & Deutsch oder andere Sprachen 3. Andere Seiten
-#   TODO: Duplicate Detections
-#    TODO: Den Inhalt der Website vielleicht besser lesen. Jetzt fehlen teilweise
+#       1. TÜBINGEN & ENGLISCH 2. Tübingen & Deutsch oder andere Sprachen 3. Andere Seiten
+#       momentant: priorität 1 für seed urls, 2 für links in denen tübingen vorkommt, 3 sonst. 
+#  TODO: Duplicate Detections
+#  TODO: Den Inhalt der Website vielleicht besser lesen. Jetzt fehlen teilweise
 #           Im Korpus Leerzeichen, ist zeug von der oberen Leiste drin etc.
-#    TODO: Stop einbauen
+#  TODO: Stop einbauen
+#  TODO: Dokumente in collection speichern
 
 
 class WebCrawler:
@@ -79,6 +82,8 @@ class WebCrawler:
             # get page content and page language
             page_links, page_content = get_web_content_and_urls(url)
             page_language = self.detect_language(page_content)
+            print("content:")
+            print(page_content)
             
             #skip empty pages
             if page_links == "" and page_content == "":
@@ -93,11 +98,10 @@ class WebCrawler:
             #add document to collection if its language is english and content is relevant
             #(check language here if not english content is not skipped above)
             page_relevant = self.is_relevant(page_content, url)
-            if page_relevant and page_language != 'en' :
-               self.add_to_collection(url)
+            if page_relevant and page_language == 'en' :
+               self.add_to_collection(url, page_content, 'collection.txt')
             
-            #TODO macht es Sinn nur die base urls zu besuchen? Problem wenn nicht: zb wird die uni tübingen seite sehr oft gecrawlt
-            page_links = set(get_base_url(link) for link in page_links)
+            page_links = set(page_links)
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             # optional: assign priorities 1 to english content, 2 to german content, 3 otherwise
             for link in page_links:
@@ -114,6 +118,7 @@ class WebCrawler:
                 else:
                     priority = 3
                 """
+                #check if link is relevant
                 if self.is_relevant("",link):
                     priority = 2
                 else:
@@ -152,9 +157,17 @@ class WebCrawler:
 
         return False
 
-    def add_to_collection(self, url: str):
-        # TODO: implement me
-        pass
+    def add_to_collection(self, url: str, page_content: str, filename: str):
+        """
+        Add the URL and page content to a text document in the collection.
+        :param url: The URL of the page.
+        :param page_content: The content of the page.
+        :param filename: The name of the text document.
+        """
+        with open(filename, 'a', encoding='utf-8') as file:
+            file.write(f"URL: {url}\n\n")
+            file.write(f"Page Content:\n{page_content}\n\n")
+
 
     def detect_language(self, text: str):
         """
@@ -298,21 +311,25 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.tasteatlas.com/local-food-in-tubingen',
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-crawler = Web_Crawler(max_pages=50, frontier=urls)
+
+crawler = WebCrawler(max_pages=10, frontier=urls)
 crawler.crawl(frontier=crawler.frontier, index=1)
 
 # Print the visited URLs to verify the crawling process
-print("Visited URLs:")
-for url in crawler.visited:
-    print(url)
+#print("Visited URLs:")
+#for url in crawler.visited:
+ #   print(url)
 
-print("frontier")
-print(crawler.frontier)
+#print("frontier")
+#print(crawler.frontier)
 
 
 # Check the content of the collection to verify indexing
 # print("Collection:")
-# TODO: Implement the logic to retrieve and display the indexed documents from the index location
+
+content = get_web_content_and_urls('https://en.wikipedia.org/wiki/T%C3%BCbingen')[1]
+#print(content)
+
 
 
     
