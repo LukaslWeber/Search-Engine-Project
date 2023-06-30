@@ -32,6 +32,18 @@ from File_loader import load_frontier, load_visited_pages
 #  DONE: Dokumente in collection speichern
 
 
+def add_to_collection(url: str, page_content: str, filename: str):
+    """
+    Add the URL and page content to a text document in the collection.
+    :param url: The URL of the page.
+    :param page_content: The content of the page.
+    :param filename: The name of the text document.
+    """
+    with open(filename, 'a', encoding='utf-8') as file:
+        file.write(f"URL: {url}\n\n")
+        file.write(f"Page Content:\n{page_content}\n\n")
+
+
 class WebCrawler:
     def __init__(self, max_pages, frontier: List[str] = None):
         """
@@ -50,7 +62,7 @@ class WebCrawler:
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         self.identifier.set_languages(['de', 'en', 'fr'])
-        #{url: (content, links, visited, relevant, language)}
+        # {url: (content, links, visited, relevant, language)}
         self.page_overview = {}
 
     def crawl(self, frontier: List[str], index: int):
@@ -61,21 +73,20 @@ class WebCrawler:
         :param index: The location of the local index storing the discovered documents.
         """
         num_pages_crawled = 0
-        #initialize priority queue and add seed urls 
+        # initialize priority queue and add seed urls
         pq_frontier = PriorityQueue()
         for doc in frontier:
             pq_frontier.put((1, doc))
 
         while pq_frontier and num_pages_crawled < self.max_pages:
-            
-            _,url = pq_frontier.get()
 
-            if url in self.page_overview and self.page_overview[url][2] == True :
+            _, url = pq_frontier.get()
+
+            if url in self.page_overview and self.page_overview[url][2] == True:
                 continue
-                
 
             # Mark the URL as visited
-            #self.visited.add(url)
+            # self.visited.add(url)
             num_pages_crawled += 1
 
             print('crawled:')
@@ -84,29 +95,27 @@ class WebCrawler:
             if url in self.page_overview:
                 page_content = self.page_overview[url][0]
                 page_links = self.page_overview[url][1]
-                page_language  = self.page_overview[url][4]
+                page_language = self.page_overview[url][4]
                 page_relevant = self.page_overview[url][3]
             else:
 
                 # get page content and page language
                 page_links, page_content = get_web_content_and_urls(url)
                 page_language = self.detect_language(page_content)
-                #print("content:")
-                #print(page_content)
-                
-                #skip empty pages
-                if page_links == "" and page_content == "":
-                    continue 
+                # print("content:")
+                # print(page_content)
 
-                #add document to collection if its language is english and content is relevant
+                # skip empty pages
+                if page_links == "" and page_content == "":
+                    continue
+
+                    # add document to collection if its language is english and content is relevant
                 page_relevant = self.is_relevant(page_content, url)
                 self.page_overview[url] = (page_content, page_links, True, page_relevant, page_language)
 
-            if page_relevant and page_language == 'en' :
-               self.add_to_collection(url, page_content, 'collection.txt')
+            if page_relevant and page_language == 'en':
+                add_to_collection(url, page_content, 'collection.txt')
 
-            
-            
             page_links = set(page_links)
             if pq_frontier.qsize() > self.max_pages:
                 continue
@@ -118,7 +127,7 @@ class WebCrawler:
                 if link in self.page_overview:
                     if self.page_overview[link][2] == True:
                         continue
-                    language  = self.page_overview[link][4]
+                    language = self.page_overview[link][4]
                     relevant = self.page_overview[link][3]
                 else:
                     links, content = get_web_content_and_urls(link)
@@ -126,7 +135,7 @@ class WebCrawler:
                     language = self.detect_language(content)
                     self.page_overview[link] = (content, links, False, relevant, language)
 
-                if relevant and language=='en':
+                if relevant and language == 'en':
                     priority = 2
                 elif relevant:
                     priority = 3
@@ -134,7 +143,6 @@ class WebCrawler:
                     priority = 4
                 else:
                     priority = 5
-
 
                 pq_frontier.put((priority, link))
 
@@ -169,18 +177,6 @@ class WebCrawler:
             return True
 
         return False
-
-    def add_to_collection(self, url: str, page_content: str, filename: str):
-        """
-        Add the URL and page content to a text document in the collection.
-        :param url: The URL of the page.
-        :param page_content: The content of the page.
-        :param filename: The name of the text document.
-        """
-        with open(filename, 'a', encoding='utf-8') as file:
-            file.write(f"URL: {url}\n\n")
-            file.write(f"Page Content:\n{page_content}\n\n")
-
 
     def detect_language(self, text: str):
         """
@@ -232,7 +228,7 @@ def get_web_content_and_urls(url: str):
     :param url: URL of the website that should be retrieved
     :return: links, content
     """
-    #handling failed requests
+    # handling failed requests
     max_retries = 1
     retry_delay = 2
     retry = urllib3.Retry(total=3, redirect=3)
@@ -269,7 +265,6 @@ def get_web_content_and_urls(url: str):
         if footer:
             footer.extract()
 
-
         # Extract all the <a> html-tags for links IF they don't start with # because those are usually internal links
         # within a webpage (anchor links) and also don't include JavaScript links because they often execute a
         # JavaScript script or are not relevant here
@@ -302,44 +297,24 @@ def get_absolute_links(url: str, links: List[str]):
             absolute_links.add(absolute_link)
     return list(absolute_links)
 
-
-# response = get_web_content_and_urls("https://www.tuebingen.de/14101.html")
-
-# response = get_url_content("https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/autonomous-vision/lectures/computer-vision/")
-# print(response)
-
-# links, content = get_url_content("https://www.w3schools.com/videos/index.php")
-
-
-# print(get_absolute_links("https://www.tuebingen.de/", ["https://www.tuebingen.de/", "https://www.tuebingen.de", "https://www.tuebingen.de/#content"]))
-
-
-#print(get_absolute_links("https://www.tuebingen.de/", ["https://www.tuebingen.de/", "https://www.tuebingen.de", "https://www.tuebingen.de/#content"]))
-
-
-
-#-----------------------------
-#just testing
-urls = ['https://uni-tuebingen.de/en/', 
-        'https://www.tuebingen.mpg.de/en', 
-        'https://www.tuebingen.de/en/', 
-        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-        'https://www.dzne.de/en/about-us/sites/tuebingen',
-        'https://www.britannica.com/place/Tubingen-Germany',
-        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-        'https://wikitravel.org/en/T%C3%BCbingen',
-        'https://www.tasteatlas.com/local-food-in-tubingen',
-        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-
-crawler = WebCrawler(max_pages=50, frontier=urls)
-crawler.crawl(frontier=crawler.frontier, index=1)
-
-# Print the visited URLs to verify the crawling process
-print("Visited URLs:")
-for url in crawler.page_overview:
-    print(url)
-
-
-
-    
+# -----------------------------
+# just testing
+# urls = ['https://uni-tuebingen.de/en/',
+#         'https://www.tuebingen.mpg.de/en',
+#         'https://www.tuebingen.de/en/',
+#         'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+#         'https://www.dzne.de/en/about-us/sites/tuebingen',
+#         'https://www.britannica.com/place/Tubingen-Germany',
+#         'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+#         'https://wikitravel.org/en/T%C3%BCbingen',
+#         'https://www.tasteatlas.com/local-food-in-tubingen',
+#         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+#         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+#
+# crawler = WebCrawler(max_pages=50, frontier=urls)
+# crawler.crawl(frontier=crawler.frontier, index=1)
+#
+# # Print the visited URLs to verify the crawling process
+# print("Visited URLs:")
+# for url in crawler.page_overview:
+#     print(url)
