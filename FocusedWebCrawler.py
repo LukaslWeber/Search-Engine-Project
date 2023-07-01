@@ -1,7 +1,9 @@
+import os
 import re, time, timeit
 from queue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
+import tempfile
 
 import numpy as np
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
@@ -41,30 +43,30 @@ class FocusedWebCrawler:
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
-            self.index = load_index()
+            self.index_db = load_index()
         else:
             self.frontier = PriorityQueue()
             for doc in frontier:
                 self.frontier.put((1, doc))
             self.visited = set()
-            self.index = {}
+            self.index_db = {}
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
-        self.identifier.set_languages(['de', 'en', 'fr'])
+        # self.identifier.set_languages(['de', 'en', 'fr'])
 
-    def crawl(self, frontier: List[str], index: int):
+    def crawl(self, frontier: PriorityQueue, index_db):
         """
         Crawls the web with the given frontier
         :param frontier: The frontier of known URLs to crawl. You will initially populate this with
         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
-        :param index: The location of the local index storing the discovered documents.
+        :param index_db: The location of the local index storing the discovered documents.
         """
         num_pages_crawled = 0
         # initialize priority queue and add seed urls
-
-        while not self.frontier.empty() and num_pages_crawled < self.max_pages:
-            _, url = self.frontier.get()
+        sss = time.time()
+        while not frontier.empty() and num_pages_crawled <= self.max_pages:
+            _, url = frontier.get()
 
             # If page has already been visited --> Continue loop
             if url in self.visited:
@@ -76,8 +78,8 @@ class FocusedWebCrawler:
             start = timeit.default_timer()
             page_links, page_content = get_web_content_and_urls(url)
             print(f" getting content and urls took: {timeit.default_timer() - start:.2f}")
-            # print(f" Page content: \n {page_content}")
-            # print(f" Page links: \n {page_links}")
+            # print(f" Page content: {page_content}")
+            print(f" Page links: {page_links}")
 
             # skip empty pages
             if page_links == [] and page_content == "":
@@ -89,24 +91,62 @@ class FocusedWebCrawler:
             print(f" detecting language took: {timeit.default_timer() - start:.2f}s")
 
             page_priority = self.get_priority(has_tuebingen, page_language)
+            print(f" Detected priority was {page_priority}")
             page_links = set(page_links)
 
+            # Add the URL to the Visited links,
+            self.visited.add(url)
+            # TODO: Page Priority one is only taken because many pages that are irrelevant
+            # Example: http://uli.nli.org.il/F/HM74MN1YKM7KYGP7KV882Y74M4DB45EIEPULCYI73KGS3G57HX-01577?func=full-set-set&set_number=011746&set_entry=000001&format=002
+            # http://uli.nli.org.il/F/HM74MN1YKM7KYGP7KV882Y74M4DB45EIEPULCYI73KGS3G57HX-01582?func=myshelf-add-ful-1&doc_library=NLX10&doc_number=000975756
+            if page_priority is None or page_priority >= 2:
+                print("THIS PAGE IS NOT RELEVANT!!! Continuing search")
+                print("--------------------------------")
+                continue
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
                 if is_valid_url(link):
-                    self.frontier.put((page_priority, link))
+                    frontier.put((page_priority, link))
                 else:
                     print(f"A valid URL has been found and could not be added to the frontier: {link}")
+            # Add the URL and page content to the index
+            self.index(index_db, url, page_content, num_pages_crawled)
 
-        #Save everything
-        if num_pages_crawled % 25 == 1:
-            # TODO:
-            add_to_collection(url, page_content, 'collection.txt')
 
-        # After page has been crawled, increment the number of visited pages by 1
-        num_pages_crawled += 1
+            #Save everything to files after every 25 documents
+            if num_pages_crawled % 25 == 1 or num_pages_crawled == self.max_pages:
+                try:
+                    # Use temporary files for saving
+                    temp_index_path = os.path.join(tempfile.gettempdir(), "temp_forward_index.joblib")
+                    temp_visited_path = os.path.join(tempfile.gettempdir(), "temp_visited_pages.json")
+                    temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.json")
 
-    def index(self, index: int, url: str, doc: str):
+                    # Save to temporary files
+                    save_index(temp_index_path, index_db)
+                    save_visited_pages(temp_visited_path, self.visited)
+                    save_frontier_pages(temp_frontier_path, frontier)
+
+                    # If all saves are successful, move the temporary files to the actual save locations
+                    file_folder = "data_files"
+                    os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
+                    os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
+                    os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.json"))
+
+                    print("Data saved successfully.")
+                except Exception as e:
+                    # Handle any exceptions that occur during saving
+                    print(f"An error occurred while saving data: {str(e)}")
+                    print("Data not saved.")
+
+
+            # After page has been crawled, increment the number of visited pages by 1
+            num_pages_crawled += 1
+            print("____________________________")
+
+        print(self.index_db)
+        print(f"took time: {time.time() - sss}")
+
+    def index(self, index_db, url: str, doc: str, key):
         """
         Add a document to the index. You need (at least) two parameters:
         :param url: The URL with which the document was retrieved
@@ -114,8 +154,7 @@ class FocusedWebCrawler:
         :param index: The location of the local index storing the discovered documents.
         :return:
         """
-        # TODO: Implement me
-        pass
+        index_db[key] = (url, doc)
 
     def has_tuebingen(self, response_text: str, url: str):
         """
@@ -146,6 +185,8 @@ class FocusedWebCrawler:
             return 3
         elif language == 'de':
             return 4
+        else:
+            return None
 
     def detect_language(self, text: str):
         """
@@ -161,8 +202,8 @@ class FocusedWebCrawler:
                 if confidence >= 0.5:  # Set a confidence threshold
                     detected_languages[lang] = detected_languages.get(lang, 0) + 1
 
-            print(detected_languages)
             lang_with_most_sentences = max(detected_languages, key=detected_languages.get)
+            print(f" The detected language was: {lang_with_most_sentences} from the occurences {detected_languages}")
             return lang_with_most_sentences
 
         except Exception as e:
@@ -368,28 +409,21 @@ def get_absolute_links(url: str, links: List[str]):
 
 # -----------------------------
 # just testing
-# urls = ['https://uni-tuebingen.de/en/',
-#         'https://www.tuebingen.mpg.de/en',
-#         'https://www.tuebingen.de/en/',
-#         'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-#         'https://www.dzne.de/en/about-us/sites/tuebingen',
-#         'https://www.britannica.com/place/Tubingen-Germany',
-#         'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-#         'https://wikitravel.org/en/T%C3%BCbingen',
-#         'https://www.tasteatlas.com/local-food-in-tubingen',
-#         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-#         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-#
-# crawler = WebCrawler(max_pages=50, frontier=urls)
-# crawler.crawl(frontier=crawler.frontier, index=1)
+urls = ['https://uni-tuebingen.de/en/',
+        'https://www.tuebingen.mpg.de/en',
+        'https://www.tuebingen.de/en/',
+        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+        'https://www.dzne.de/en/about-us/sites/tuebingen',
+        'https://www.britannica.com/place/Tubingen-Germany',
+        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+        'https://wikitravel.org/en/T%C3%BCbingen',
+        'https://www.tasteatlas.com/local-food-in-tubingen',
+        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+crawler = FocusedWebCrawler(max_pages=50, frontier=urls)
+crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
 #
 # # Print the visited URLs to verify the crawling process
 # print("Visited URLs:")
 # for url in crawler.page_overview:
 #     print(url)
-
-
-index = {1: ("po.com", "1 po"), 2: ("pi.com", "2 pi")}
-save_index(index)
-print(index)
-print(load_index())

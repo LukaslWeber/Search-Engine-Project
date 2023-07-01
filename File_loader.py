@@ -2,6 +2,7 @@ import errno
 import json
 import os
 import sys
+from queue import PriorityQueue
 from typing import List, Dict
 from joblib import dump, load
 
@@ -9,13 +10,17 @@ from joblib import dump, load
 def load_visited_pages():
     file_name = "visited_pages.json"
     error_message = "Try giving the Web_Crawler object a frontier to create an empty frontier or construct it newly."
-    return load_file(file_name, error_message)
+    return set(load_file(file_name, error_message))
 
 
 def load_frontier():
-    file_name = "frontier.json"
+    file_name = "frontier_pages.json"
     error_message = "Try giving the Web_Crawler object a frontier that you define manually instead of loading the file."
-    return load_file(file_name, error_message)
+    frontier_list = load_file(file_name, error_message)
+    frontier_pq = PriorityQueue()
+    for tuple in frontier_list:
+        frontier_pq.put(tuple)
+    return frontier_pq
 
 
 def load_index():
@@ -23,22 +28,18 @@ def load_index():
     return forward_index
 
 
-def save_index(forward_index: Dict[int, tuple]):
-    file_name = "forward_index.joblib"
+def save_index(file_name, forward_index: Dict[int, tuple]):
     dump(forward_index, file_name)
 
 
-def save_visited_pages(visited_pages: set):
-    file_name = "visited_pages.json"
+def save_visited_pages(file_name, visited_pages: set):
     with open(file_name, 'w') as file:
         json.dump(list(visited_pages), file)
 
 
-def save_frontier_pages(frontier_pages: List[str]):
-    # TODO: an schlussendliche Form der Daten anpassen
-    file_name = "frontier_pages.json"
+def save_frontier_pages(file_name, frontier_pages: PriorityQueue):
     with open(file_name, 'w') as file:
-        json.dump(list(frontier_pages), file)
+        json.dump(list(frontier_pages.queue), file)
 
 
 def load_file(file_name: str, error_message: str):
@@ -66,7 +67,7 @@ def load_json(file_name: str):
     # If it exists, then open it.
     try:
         with open(file_name, 'r') as file:
-            visited_pages = set(json.load(file))
+            visited_pages = json.load(file)
         return visited_pages
     # When the file is corrupt, it throws an exception
     except json.JSONDecodeError as e:
