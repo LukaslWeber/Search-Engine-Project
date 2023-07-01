@@ -1,30 +1,26 @@
-import re
-import time
+import re, time, timeit
 from queue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
 
+import numpy as np
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
 import urllib3
 from bs4 import BeautifulSoup
 # For checking whether a page is English or German
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
 
-from File_loader import load_frontier, load_visited_pages
+from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, save_index
 
 
 # Crawl the web to discover English content related to Tübingen.
 # The crawled content should be stored locally.
 # If interrupted, your crawler should be able to re-start the crawling process at any time.
 
-#  TODO: Read about a "Focused Crawler"
-#  DONE: HTTP-Anfrage starten
 #  DONE: Was passiert wenn http Anfrage nicht klappt?
 #  TODO: Was mit deutschen Seiten die keinen englischen Content haben?
 #           --> Könnte man übersetzen Sicherstellen, dass wir auf der englischen Seite bleiben oder
 #           deutsche auf niedrigere PRIOO setzen --> Rufe detect_language auf und checke ob die Sprache en ist
-#  DONE: Priority Queue in der Englischer Content vorne steht Vielleicht:
-#       1. TÜBINGEN & ENGLISCH 2. Tübingen & Deutsch oder andere Sprachen 3. Andere Seiten
 #  TODO: Duplicate Detections
 #  DONE: Den Inhalt der Website vielleicht besser lesen. Jetzt fehlen teilweise
 #           Im Korpus Leerzeichen, ist zeug von der oberen Leiste drin etc.
@@ -32,38 +28,30 @@ from File_loader import load_frontier, load_visited_pages
 #  DONE: Dokumente in collection speichern
 
 
-def add_to_collection(url: str, page_content: str, filename: str):
-    """
-    Add the URL and page content to a text document in the collection.
-    :param url: The URL of the page.
-    :param page_content: The content of the page.
-    :param filename: The name of the text document.
-    """
-    with open(filename, 'a', encoding='utf-8') as file:
-        file.write(f"URL: {url}\n\n")
-        file.write(f"Page Content:\n{page_content}\n\n")
 
 
-class WebCrawler:
-    def __init__(self, max_pages, frontier: List[str] = None):
+class FocusedWebCrawler:
+    def __init__(self, max_pages: int = np.inf, frontier: List[str] = None):
         """
         Initializes the Crawler object with a frontier and a maximum number of pages to be crawled
         :param max_pages: Number indicating the maximum number of webpages to be crawled
         :param frontier: np.ndarray of urls (Strings) or None if the past search should be continued!
         """
-        # If no frontier is given --> Load the frontier from a previous search
+        # If no frontier is given --> Load the frontier, visited pages and index from a previous search
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
+            self.index = load_index()
         else:
-            self.frontier = frontier
+            self.frontier = PriorityQueue()
+            for doc in frontier:
+                self.frontier.put((1, doc))
             self.visited = set()
+            self.index = {}
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         self.identifier.set_languages(['de', 'en', 'fr'])
-        # {url: (content, links, visited, relevant, language)}
-        self.page_overview = {}
 
     def crawl(self, frontier: List[str], index: int):
         """
@@ -74,83 +62,54 @@ class WebCrawler:
         """
         num_pages_crawled = 0
         # initialize priority queue and add seed urls
-        pq_frontier = PriorityQueue()
-        for doc in frontier:
-            pq_frontier.put((1, doc))
 
-        while pq_frontier and num_pages_crawled < self.max_pages:
+        while not self.frontier.empty() and num_pages_crawled < self.max_pages:
+            _, url = self.frontier.get()
 
-            _, url = pq_frontier.get()
-
-            if url in self.page_overview and self.page_overview[url][2] == True:
+            # If page has already been visited --> Continue loop
+            if url in self.visited:
                 continue
 
-            # Mark the URL as visited
-            # self.visited.add(url)
-            num_pages_crawled += 1
+            print(f"Crawling page: {num_pages_crawled} with url: {url}")
 
-            print('crawled:')
-            print(num_pages_crawled)
+            # get page content and links on the page
+            start = timeit.default_timer()
+            page_links, page_content = get_web_content_and_urls(url)
+            print(f" getting content and urls took: {timeit.default_timer() - start:.2f}")
+            # print(f" Page content: \n {page_content}")
+            # print(f" Page links: \n {page_links}")
 
-            if url in self.page_overview:
-                page_content = self.page_overview[url][0]
-                page_links = self.page_overview[url][1]
-                page_language = self.page_overview[url][4]
-                page_relevant = self.page_overview[url][3]
-            else:
+            # skip empty pages
+            if page_links == [] and page_content == "":
+                continue
 
-                # get page content and page language
-                page_links, page_content = get_web_content_and_urls(url)
-                page_language = self.detect_language(page_content)
-                # print("content:")
-                # print(page_content)
+            has_tuebingen = self.has_tuebingen(page_content, url)
+            start = timeit.default_timer()
+            page_language = self.detect_language(page_content)
+            print(f" detecting language took: {timeit.default_timer() - start:.2f}s")
 
-                # skip empty pages
-                if page_links == "" and page_content == "":
-                    continue
-
-                    # add document to collection if its language is english and content is relevant
-                page_relevant = self.is_relevant(page_content, url)
-                self.page_overview[url] = (page_content, page_links, True, page_relevant, page_language)
-
-            if page_relevant and page_language == 'en':
-                add_to_collection(url, page_content, 'collection.txt')
-
+            page_priority = self.get_priority(has_tuebingen, page_language)
             page_links = set(page_links)
-            if pq_frontier.qsize() > self.max_pages:
-                continue
+
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
-                if not is_valid_url(link):
-                    continue
-
-                if link in self.page_overview:
-                    if self.page_overview[link][2] == True:
-                        continue
-                    language = self.page_overview[link][4]
-                    relevant = self.page_overview[link][3]
+                if is_valid_url(link):
+                    self.frontier.put((page_priority, link))
                 else:
-                    links, content = get_web_content_and_urls(link)
-                    relevant = self.is_relevant(content, link)
-                    language = self.detect_language(content)
-                    self.page_overview[link] = (content, links, False, relevant, language)
+                    print(f"A valid URL has been found and could not be added to the frontier: {link}")
 
-                if relevant and language == 'en':
-                    priority = 2
-                elif relevant:
-                    priority = 3
-                elif language == 'en':
-                    priority = 4
-                else:
-                    priority = 5
+        #Save everything
+        if num_pages_crawled % 25 == 1:
+            # TODO:
+            add_to_collection(url, page_content, 'collection.txt')
 
-                pq_frontier.put((priority, link))
+        # After page has been crawled, increment the number of visited pages by 1
+        num_pages_crawled += 1
 
-        self.frontier = pq_frontier
-
-    def index(self, doc: str, index: int):
+    def index(self, index: int, url: str, doc: str):
         """
         Add a document to the index. You need (at least) two parameters:
+        :param url: The URL with which the document was retrieved
         :param doc: The document to be indexed
         :param index: The location of the local index storing the discovered documents.
         :return:
@@ -158,7 +117,7 @@ class WebCrawler:
         # TODO: Implement me
         pass
 
-    def is_relevant(self, response_text: str, url: str):
+    def has_tuebingen(self, response_text: str, url: str):
         """
         Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
         The uppercase should be ignored here
@@ -177,6 +136,16 @@ class WebCrawler:
             return True
 
         return False
+
+    def get_priority(self, has_tuebingen: bool, language: str):
+        if has_tuebingen and language == 'en':
+            return 1
+        elif has_tuebingen and language == 'de':
+            return 2
+        elif language == 'en':
+            return 3
+        elif language == 'de':
+            return 4
 
     def detect_language(self, text: str):
         """
@@ -199,6 +168,20 @@ class WebCrawler:
         except Exception as e:
             print(f"Some error occured during language detection of the string: {str(e)}")
             return None
+
+
+
+def add_to_collection(url: str, page_content: str, filename: str):
+    """
+    Add the URL and page content to a text document in the collection.
+    :param url: The URL of the page.
+    :param page_content: The content of the page.
+    :param filename: The name of the text document.
+    """
+    with open(filename, 'a', encoding='utf-8') as file:
+        file.write(f"URL: {url}\n\n")
+        file.write(f"Page Content:\n{page_content}\n\n")
+
 
 
 # checks if given url is valid (considered valid if host and port components are present)
@@ -261,6 +244,7 @@ def get_web_content_and_urls(url: str):
         if header:
             header.extract()
 
+        # TODO: Checken ob das hier nicht web sollte. Im Footer steht nämlich meistens die Adresse (TÜBINGEN)
         footer = soup.find('footer')
         if footer:
             footer.extract()
@@ -297,6 +281,91 @@ def get_absolute_links(url: str, links: List[str]):
             absolute_links.add(absolute_link)
     return list(absolute_links)
 
+# _______________ OLD UNUSED METHODS __________________-
+#     def crawl(self, frontier: List[str], index: int):
+#         """
+#         Crawls the web with the given frontier
+#         :param frontier: The frontier of known URLs to crawl. You will initially populate this with
+#         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
+#         :param index: The location of the local index storing the discovered documents.
+#         """
+#         num_pages_crawled = 0
+#         # initialize priority queue and add seed urls
+#         pq_frontier = PriorityQueue()
+#         for doc in frontier:
+#             pq_frontier.put((1, doc))
+#
+#         while pq_frontier and num_pages_crawled < self.max_pages:
+#
+#             _, url = pq_frontier.get()
+#
+#             if url in self.page_overview and self.page_overview[url][2] == True:
+#                 continue
+#
+#             # Mark the URL as visited
+#             # self.visited.add(url)
+#             num_pages_crawled += 1
+#
+#             print('crawled:')
+#             print(num_pages_crawled)
+#
+#             if url in self.page_overview:
+#                 page_content = self.page_overview[url][0]
+#                 page_links = self.page_overview[url][1]
+#                 page_language = self.page_overview[url][4]
+#                 page_relevant = self.page_overview[url][3]
+#             else:
+#
+#                 # get page content and page language
+#                 page_links, page_content = get_web_content_and_urls(url)
+#                 page_language = self.detect_language(page_content)
+#                 # print("content:")
+#                 # print(page_content)
+#
+#                 # skip empty pages
+#                 if page_links == "" and page_content == "":
+#                     continue
+#
+#                     # add document to collection if its language is english and content is relevant
+#                 page_relevant = self.is_relevant(page_content, url)
+#                 self.page_overview[url] = (page_content, page_links, True, page_relevant, page_language)
+#
+#             if page_relevant and page_language == 'en':
+#                 add_to_collection(url, page_content, 'collection.txt')
+#
+#             page_links = set(page_links)
+#             if pq_frontier.qsize() > self.max_pages:
+#                 continue
+#             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
+#             for link in page_links:
+#                 if not is_valid_url(link):
+#                     continue
+#
+#                 if link in self.page_overview:
+#                     if self.page_overview[link][2] == True:
+#                         continue
+#                     language = self.page_overview[link][4]
+#                     relevant = self.page_overview[link][3]
+#                 else:
+#                     links, content = get_web_content_and_urls(link)
+#                     relevant = self.is_relevant(content, link)
+#                     language = self.detect_language(content)
+#                     self.page_overview[link] = (content, links, False, relevant, language)
+#
+#                 if relevant and language == 'en':
+#                     priority = 2
+#                 elif relevant:
+#                     priority = 3
+#                 elif language == 'en':
+#                     priority = 4
+#                 else:
+#                     priority = 5
+#
+#                 pq_frontier.put((priority, link))
+#
+#         self.frontier = pq_frontier
+
+
 # -----------------------------
 # just testing
 # urls = ['https://uni-tuebingen.de/en/',
@@ -318,3 +387,9 @@ def get_absolute_links(url: str, links: List[str]):
 # print("Visited URLs:")
 # for url in crawler.page_overview:
 #     print(url)
+
+
+index = {1: ("po.com", "1 po"), 2: ("pi.com", "2 pi")}
+save_index(index)
+print(index)
+print(load_index())
