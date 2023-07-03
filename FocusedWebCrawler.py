@@ -66,6 +66,7 @@ class FocusedWebCrawler:
         # initialize priority queue and add seed urls
         sss = time.time()
         while not frontier.empty() and num_pages_crawled <= self.max_pages:
+            print(frontier.queue)
             _, url = frontier.get()
 
             # If page has already been visited --> Continue loop
@@ -108,7 +109,7 @@ class FocusedWebCrawler:
                 if is_valid_url(link):
                     frontier.put((page_priority, link))
                 else:
-                    print(f"A valid URL has been found and could not be added to the frontier: {link}")
+                    print(f"An invalid URL has been found and could not be added to the frontier: {link}")
             # Add the URL and page content to the index
             self.index(index_db, url, page_content, num_pages_crawled)
 
@@ -143,7 +144,7 @@ class FocusedWebCrawler:
             num_pages_crawled += 1
             print("____________________________")
 
-        print(self.index_db)
+        print(f"Index is: {self.index_db}")
         print(f"took time: {time.time() - sss}")
 
     def index(self, index_db, url: str, doc: str, key):
@@ -420,8 +421,11 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.tasteatlas.com/local-food-in-tubingen',
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-crawler = FocusedWebCrawler(max_pages=50, frontier=urls)
+
+crawler = FocusedWebCrawler(max_pages=3, frontier=urls)
+print(crawler.index_db)
 crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
+print(crawler.index_db)
 #
 # # Print the visited URLs to verify the crawling process
 # print("Visited URLs:")
