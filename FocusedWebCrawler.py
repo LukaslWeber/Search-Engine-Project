@@ -3,7 +3,7 @@ import re
 import tempfile
 import time
 import timeit
-from queue import PriorityQueue
+from PriorityQueue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
 
@@ -147,13 +147,13 @@ class FocusedWebCrawler:
             # Add the URL and page content to the index
             self.index(index_db, url, page_content, num_pages_crawled)
 
-            # Save everything to files after every 25 documents
+            # Save everything to files after every 25 documents and at the end of crawling
             if num_pages_crawled % 25 == 0 or num_pages_crawled == self.max_pages:
                 try:
                     # Use temporary files for saving
                     temp_index_path = os.path.join(tempfile.gettempdir(), "temp_forward_index.joblib")
                     temp_visited_path = os.path.join(tempfile.gettempdir(), "temp_visited_pages.json")
-                    temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.json")
+                    temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.joblib")
 
                     # Save to temporary files
                     save_index(temp_index_path, index_db)
@@ -164,7 +164,7 @@ class FocusedWebCrawler:
                     file_folder = "data_files"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
-                    os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.json"))
+                    os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
 
                     print("Data saved successfully.")
                 except Exception as e:
@@ -426,11 +426,11 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.tasteatlas.com/local-food-in-tubingen',
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-# crawler = FocusedWebCrawler(max_pages=1, frontier=urls)
+# crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
 # crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
-crawler = FocusedWebCrawler()
-crawler.crawl(crawler.frontier, index_db=crawler.index_db)
-#
+# crawler = FocusedWebCrawler()
+# crawler.crawl(crawler.frontier, index_db=crawler.index_db)
+
 # # Print the visited URLs to verify the crawling process
 # print("Visited URLs:")
 # for url in crawler.page_overview:

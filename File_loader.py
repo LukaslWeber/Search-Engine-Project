@@ -2,7 +2,7 @@ import errno
 import json
 import os
 import sys
-from queue import PriorityQueue
+from PriorityQueue import PriorityQueue
 from typing import List, Dict
 from joblib import dump, load
 
@@ -14,9 +14,9 @@ def load_visited_pages():
 
 
 def load_frontier():
-    file_name = "frontier_pages.json"
+    file_name = "frontier_pages.joblib"
     error_message = "Try giving the Web_Crawler object a frontier that you define manually instead of loading the file."
-    frontier_list = load_file(os.path.join("data_files", file_name), error_message)
+    frontier_list = load(os.path.join("data_files", file_name))
     frontier_pq = PriorityQueue()
     for (priority, url) in frontier_list:
         frontier_pq.put((priority, url))
@@ -39,8 +39,7 @@ def save_visited_pages(file_name, visited_pages: set):
 
 
 def save_frontier_pages(file_name, frontier_pages: PriorityQueue):
-    with open(file_name, 'w') as file:
-        json.dump(list(frontier_pages.queue), file)
+    dump(frontier_pages.to_list(), file_name)
 
 
 def load_file(file_name: str, error_message: str):
