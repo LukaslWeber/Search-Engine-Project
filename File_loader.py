@@ -10,21 +10,22 @@ from joblib import dump, load
 def load_visited_pages():
     file_name = "visited_pages.json"
     error_message = "Try giving the Web_Crawler object a frontier to create an empty frontier or construct it newly."
-    return set(load_file(file_name, error_message))
+    return set(load_file(os.path.join("data_files", file_name), error_message))
 
 
 def load_frontier():
     file_name = "frontier_pages.json"
     error_message = "Try giving the Web_Crawler object a frontier that you define manually instead of loading the file."
-    frontier_list = load_file(file_name, error_message)
+    frontier_list = load_file(os.path.join("data_files", file_name), error_message)
     frontier_pq = PriorityQueue()
-    for tuple in frontier_list:
-        frontier_pq.put(tuple)
+    for (priority, url) in frontier_list:
+        frontier_pq.put((priority, url))
     return frontier_pq
 
 
+
 def load_index():
-    forward_index = load('forward_index.joblib')
+    forward_index = load(os.path.join("data_files", 'forward_index.joblib'))
     return forward_index
 
 
