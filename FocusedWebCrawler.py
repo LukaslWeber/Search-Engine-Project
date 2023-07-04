@@ -25,6 +25,7 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
 # TODO: Duplicate Detections
 # TODO: Nicht zu wenig zeit zwischen den Anfragen
 # TODO: ROBOTS.TXT BEACHTEN
+# TODO: index beim neu laden
 
 
 def has_tuebingen(string_to_check: str) -> bool:
@@ -96,7 +97,13 @@ class FocusedWebCrawler:
         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
         :param index_db: The location of the local index storing the discovered documents.
         """
-        num_pages_crawled = 0
+        """
+        if index_db == {}:
+            num_pages_crawled = 0
+        else:
+            num_pages_crawled= max(index_db.keys) + 1
+        """
+
         user_agent = get_user_agent()
         # initialize priority queue and add seed urls
         sss = time.time()
@@ -347,18 +354,18 @@ def get_robots_content(url: str) -> str:
     root_url = get_base_url(url)
     robots_url = root_url + "/robots.txt"
 
-    retry = urllib3.Retry(total=3, redirect=3)
-    timeout = urllib3.Timeout(connect=2.0, read=2.0)
-    http = urllib3.PoolManager(retries=retry, timeout=timeout)
-
+    http = urllib3.PoolManager()
 
     try:
         response = http.request('GET', robots_url)
-        content = response.data.decode('utf-8')
+        try:
+            content = response.data.decode('utf-8')
+        except UnicodeDecodeError:
+            content = response.data.decode('latin-1')
         return content
     except urllib3.exceptions.HTTPError as e:
         print(f"HTTP error occurred while retrieving robots.txt: {str(e)}")
-    except urllib3.exceptions.URLError as e:
+    except urllib3.exceptions.NewConnectionError as e:
         print(f"URL error occurred while retrieving robots.txt: {str(e)}")
 
     return ""
