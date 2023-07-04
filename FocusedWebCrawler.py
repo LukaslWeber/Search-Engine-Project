@@ -6,6 +6,7 @@ import timeit
 from PriorityQueue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
+import requests
 
 import numpy as np
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
@@ -96,6 +97,7 @@ class FocusedWebCrawler:
         :param index_db: The location of the local index storing the discovered documents.
         """
         num_pages_crawled = 0
+        user_agent = get_user_agent()
         # initialize priority queue and add seed urls
         sss = time.time()
         while not frontier.empty() and num_pages_crawled <= self.max_pages:
@@ -105,17 +107,24 @@ class FocusedWebCrawler:
             if url in self.visited:
                 continue
 
+            #skip urls that are disallowed in the robots.txt file
+            robots_content = get_robots_content(url)
+            if not is_allowed(user_agent, url, robots_content):
+                self.visited.add(url)
+                continue
+
             print(f"Crawling page: {num_pages_crawled} with url: {url}")
 
             # get page content and links on the page
             start = timeit.default_timer()
             page_links, page_header, page_content, page_footer = get_web_content_and_urls(url)
             print(f" getting content and urls took: {timeit.default_timer() - start:.2f}")
-            print(f" Page content: {page_content}")
-            print(f" Page links: {page_links}")
+            #print(f" Page content: {page_content}")
+            #print(f" Page links: {page_links}")
 
             # skip empty pages
             if page_links is None and page_content is None:
+                self.visited.add(url)
                 continue
 
             # Check if "Tübingen" or "Tuebingen" is contained somewhere in the URL or document
@@ -304,6 +313,8 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
         # The latter need to be transformed. The rest stays the same
         links = get_absolute_links(url, links)
 
+
+
         return links, header_content, body_content, footer_content
 
     return None, None, None, None
@@ -326,6 +337,63 @@ def get_absolute_links(url: str, links: List[str]) -> List[str]:
         if absolute_link != url and absolute_link != base_url:
             absolute_links.add(absolute_link)
     return list(absolute_links)
+
+def get_robots_content(url: str) -> str:
+    """
+    Method that returns content of the robots.txt file for a given URL
+    :param url: The website URL
+    :return: A string containing the content of the robots.txt file
+    """
+    root_url = get_base_url(url)
+    robots_url = root_url + "/robots.txt"
+
+    retry = urllib3.Retry(total=3, redirect=3)
+    timeout = urllib3.Timeout(connect=2.0, read=2.0)
+    http = urllib3.PoolManager(retries=retry, timeout=timeout)
+
+
+    try:
+        response = http.request('GET', robots_url)
+        content = response.data.decode('utf-8')
+        return content
+    except urllib3.exceptions.HTTPError as e:
+        print(f"HTTP error occurred while retrieving robots.txt: {str(e)}")
+    except urllib3.exceptions.URLError as e:
+        print(f"URL error occurred while retrieving robots.txt: {str(e)}")
+
+    return ""
+
+def get_user_agent():
+    try:
+        response = requests.get('https://httpbin.org/user-agent')
+        response_json = response.json()
+        user_agent = response_json.get('user-agent')
+        return user_agent
+    except (requests.RequestException, json.JSONDecodeError) as e:
+        print(f"Error retrieving user agent: {str(e)}")
+        return None
+
+
+def is_allowed(user_agent, url, robots_content):
+    # Find relevant rules for the user agent
+    path = urlparse(url).path
+    user_agent_rules = []
+    current_user_agent = None
+    for line in robots_content.splitlines():
+        if line.lower().startswith("user-agent"):
+            current_user_agent = line.split(":")[1].strip()
+        elif line.lower().startswith("disallow") and (current_user_agent == user_agent or current_user_agent == "*"):
+            disallowed_path = line.split(":")[1].strip()
+            user_agent_rules.append(disallowed_path)
+
+    # Check if the provided path is allowed
+    for rule in user_agent_rules:
+        if path.startswith(rule):
+            print(f"disallowed url detected: {path}")
+            return False
+    return True
+
+
 
 
 # _______________ OLD UNUSED METHODS __________________-
@@ -428,10 +496,17 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
 # crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
 # crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
-# crawler = FocusedWebCrawler()
-# crawler.crawl(crawler.frontier, index_db=crawler.index_db)
+crawler = FocusedWebCrawler()
+crawler.crawl(crawler.frontier, index_db=crawler.index_db)
 
 # # Print the visited URLs to verify the crawling process
 # print("Visited URLs:")
 # for url in crawler.page_overview:
 #     print(url)
+
+#url = 'https://www.tuebingen.de/en/'
+#root_url = get_base_url(url)
+#robots_url = root_url + "/robots.txt"
+#response = requests.get(robots_url)
+#print(response.text)
+#print(get_user_agent())
