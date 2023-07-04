@@ -97,12 +97,10 @@ class FocusedWebCrawler:
         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
         :param index_db: The location of the local index storing the discovered documents.
         """
-        """
         if index_db == {}:
             num_pages_crawled = 0
         else:
             num_pages_crawled= max(index_db.keys) + 1
-        """
 
         user_agent = get_user_agent()
         # initialize priority queue and add seed urls
@@ -156,7 +154,7 @@ class FocusedWebCrawler:
                 continue
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
-                if is_valid_url(link):
+                if is_valid_url(link) and not (link in self.visited):
                     frontier.put((page_priority, link))
                 else:
                     print(f"An invalid URL has been found and could not be added to the frontier: {link}")
