@@ -23,7 +23,7 @@ def TF_IDF(inverted_index, query, relevant_docs, doc_count):
             doc_id = doc[0]
             if doc_id in relevant_docs:
                 TF[relevant_docs.index(doc_id), i] = len(doc[1])
-    TF_IDF = TF @ IDF
+    TF_IDF = TF @ IDF # for all the relevant documents
     relevant_indecs = np.flip(np.argsort(TF_IDF))
     sorted_docs = []
     for i in range(necessary_docs):

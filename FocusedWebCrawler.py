@@ -8,6 +8,7 @@ from typing import List
 from urllib.parse import urljoin, urlparse
 
 import numpy as np
+from utils import preprocessing
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
 import urllib3
 from bs4 import BeautifulSoup
@@ -72,16 +73,22 @@ class FocusedWebCrawler:
         :param frontier: np.ndarray of urls (Strings) or None if the past search should be continued!
         """
         # If no frontier is given --> Load the frontier, visited pages and index from a previous search
+        file_folder = "data_files"
+        self.index_path = os.path.join(file_folder, "forward_index.joblib")
+        self.inverted_index_path = os.path.join(file_folder, "inverted_index.joblib")
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
-            self.index_db = load_index()
+            self.index_db = load_index(self.index_path)
+            print(len(self.index_db))
+            self.inverted_index_db = load_index(self.inverted_index_path)
         else:
             self.frontier = PriorityQueue()
             for doc in frontier:
                 self.frontier.put((1, doc))
             self.visited = set()
             self.index_db = {}
+            self.inverted_index_db = {}
         # Maximum pages to be indexed
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
@@ -145,24 +152,31 @@ class FocusedWebCrawler:
                 else:
                     print(f"An invalid URL has been found and could not be added to the frontier: {link}")
             # Add the URL and page content to the index
-            self.index(index_db, url, page_content, num_pages_crawled)
+            if page_priority == 1: #save only english pages with tübingen content
+                self.inverted_index(page_content, num_pages_crawled)
+                self.index(url, num_pages_crawled)
 
             # Save everything to files after every 25 documents and at the end of crawling
             if num_pages_crawled % 25 == 0 or num_pages_crawled == self.max_pages:
                 try:
-                    # Use temporary files for saving
+
+                    # Use temporary files for saving 
+                    #TODO: Check if this works for all not working for me
                     temp_index_path = os.path.join(tempfile.gettempdir(), "temp_forward_index.joblib")
+                    temp_inverted_index_path = os.path.join(tempfile.gettempdir(), "temp_inverted_index.joblib")
                     temp_visited_path = os.path.join(tempfile.gettempdir(), "temp_visited_pages.json")
                     temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.joblib")
 
                     # Save to temporary files
-                    save_index(temp_index_path, index_db)
+                    save_index(temp_index_path, self.index_db)
+                    save_index(temp_index_path, self.inverted_index_db)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
                     file_folder = "data_files"
-                    os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
+                    os.replace(temp_index_path, self.index_path)
+                    os.replace(temp_inverted_index_path, self.inverted_index_path)
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
                     os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
 
@@ -176,10 +190,18 @@ class FocusedWebCrawler:
             num_pages_crawled += 1
             print("____________________________")
 
-        print(f"Index is: {self.index_db}")
-        print(f"took time: {time.time() - sss}")
+        #print(f"Index is: {self.index_db}")
+        with open('index.txt', 'w',encoding='utf-8') as file:
+            for key, value in self.index_db.items():
+                file.write(f'{key}: {value}\n')
 
-    def index(self, index_db : dict, url: str, doc: str, key) -> None:
+        #print(f"Invertedindex is: {self.inverted_index_db}")
+        with open('inverted_index.txt', 'w',encoding='utf-8') as file:
+            for key, value in self.inverted_index_db.items():
+                file.write(f'{key}: {value}\n')
+        #print(f"took time: {time.time() - sss}")
+
+    def index(self, url: str, key) -> None:
         """
         Add a document to the index. You need (at least) two parameters:
         :param url: The URL with which the document was retrieved
@@ -187,7 +209,30 @@ class FocusedWebCrawler:
         :param index_db: The location of the local index storing the discovered documents.
         :return:
         """
-        index_db[key] = (url, doc)
+        self.index_db[key] = url
+
+
+    def inverted_index(self,  doc:str, key) -> None:
+        """
+        Add a document to the inverted index. You need (at least) two parameters:
+        :param doc: The document to be indexed
+        :param key 
+        :return:
+        """
+        documents = preprocessing(doc)
+        terms = documents.split()
+        for position, term in enumerate(terms):
+            if term not in self.inverted_index_db:
+                self.inverted_index_db[term] = [[key, [position]]]
+            else:
+                found = False
+                for entry in self.inverted_index_db[term]:
+                    if entry[0] == key:
+                        entry[1].append(position)
+                        found = True
+                        break
+                if not found:
+                    self.inverted_index_db[term].append([key, [position]])
 
     def detect_language(self, text: str) -> str:
         """
@@ -426,8 +471,9 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.tasteatlas.com/local-food-in-tubingen',
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-# crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
-# crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
+crawler = FocusedWebCrawler(max_pages=1, frontier=urls)
+crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
+#crawler = FocusedWebCrawler()
 # crawler = FocusedWebCrawler()
 # crawler.crawl(crawler.frontier, index_db=crawler.index_db)
 

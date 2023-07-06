@@ -24,9 +24,10 @@ def load_frontier():
 
 
 
-def load_index():
-    forward_index = load(os.path.join("data_files", 'forward_index.joblib'))
+def load_index(path: str):
+    forward_index = load(path)
     return forward_index
+
 
 
 def save_index(file_name, forward_index: Dict[int, tuple]):
