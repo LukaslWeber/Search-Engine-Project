@@ -7,9 +7,11 @@ from PriorityQueue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
 import requests
+import json
 import hashlib
 import difflib
 from simhash import Simhash
+from typing import Dict
 
 import numpy as np
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
@@ -25,8 +27,9 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
 #  TODO: Was mit deutschen Seiten die keinen englischen Content haben?
 #           --> Könnte man übersetzen Sicherstellen, dass wir auf der englischen Seite bleiben oder
 #           deutsche auf niedrigere PRIOO setzen --> Rufe detect_language auf und checke ob die Sprache en ist
-# TODO: Duplicate Detections
+# DONE: Duplicate Detections
 # TODO: Nicht zu wenig zeit zwischen den Anfragen
+# TODO: vielleicht eine methode um den crawler zu resetten?
 # DONE: ROBOTS.TXT BEACHTEN
 # DONE: index beim neu laden
 
@@ -237,19 +240,6 @@ class FocusedWebCrawler:
             print(f"Some error occured during language detection of the string: {str(e)}")
             return None
 
-
-def add_to_collection(url: str, page_content: str, filename: str) -> None:
-    """
-    Add the URL and page content to a text document in the collection.
-    :param url: The URL of the page.
-    :param page_content: The content of the page.
-    :param filename: The name of the text document.
-    """
-    with open(filename, 'a', encoding='utf-8') as file:
-        file.write(f"URL: {url}\n\n")
-        file.write(f"Page Content:\n{page_content}\n\n")
-
-
 # checks if given url is valid (considered valid if host and port components are present)
 def is_valid_url(url) -> bool:
     try:
@@ -329,11 +319,7 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
         # Some links are given in an absolute (http...) form and some are given in a relative form (/example...).
         # The latter need to be transformed. The rest stays the same
         links = get_absolute_links(url, links)
-
-
-
         return links, header_content, body_content, footer_content
-
     return None, None, None, None
 
 
@@ -380,7 +366,10 @@ def get_robots_content(url: str) -> str:
 
     return ""
 
-def get_user_agent():
+def get_user_agent() -> str:
+    """
+    method that returns the current user agent
+    """
     try:
         response = requests.get('https://httpbin.org/user-agent')
         response_json = response.json()
@@ -391,9 +380,16 @@ def get_user_agent():
         return None
 
 
-def is_allowed(user_agent, url, robots_content):
-    # Find relevant rules for the user agent
+def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
+    """
+    Method that checks if crawling a given url is allowed in the current robots.txt file
+    :param user agent: the current user agent
+    :param url: current url
+    :param robots_content: content of the current robots.txt file
+    :return: False if crawling the url is disallowed in robots, True otherwise
+    """
     path = urlparse(url).path
+    #save rules relevant for the current user agent
     user_agent_rules = []
     current_user_agent = None
     for line in robots_content.splitlines():
@@ -401,17 +397,22 @@ def is_allowed(user_agent, url, robots_content):
             current_user_agent = line.split(":")[1].strip()
         elif line.lower().startswith("disallow") and (current_user_agent == user_agent or current_user_agent == "*"):
             disallowed_path = line.split(":")[1].strip()
+            #append relevant rules
             user_agent_rules.append(disallowed_path)
 
-    # Check if the provided path is allowed
+    #check if the provided path is allowed
     for rule in user_agent_rules:
         if path.startswith(rule):
             print(f"disallowed url detected: {path}")
             return False
     return True
 
-#should return a similiarity hash value in  ? bits
-def compute_similarity_hash(page_content, k=5):
+def compute_similarity_hash(page_content: str, k: int = 5) -> str:
+    """
+    Method tht returns a 64bit binary similarity hash value for a page content
+    :param page_content: the content of the current page
+    :param k: threshold for bit difference
+    """
     # Compute the similarity hash for a string
     hash_value = Simhash(page_content).value
     similarity_hash = hash_value >> k
@@ -420,13 +421,16 @@ def compute_similarity_hash(page_content, k=5):
     return binary_hash
     
 
-#Check a single document against an existing collection of previsouly seen documents for near duplicates
-#returns true if a document is a duplicate or a near duplicate
-def is_duplicate(content, url, previous_hashes, k = 5):
-    # Compute the hash for the content
+def is_duplicate(content: str, previous_hashes: Dict[str,str] , k: int = 5):
+    """
+    Method that checks a document against an existing collection of previsouly seen documents for near duplicates
+    :param content: page content of the current page
+    :param previous_hashes: contains the hash values of all pages that have been indexed before
+    :param k: threshold of bit difference that is neccessary to consider two documents duplicates
+    :return: True if the current document is a duplicate of any previously indexed document, False otherwise
+    """
     current_hash = compute_similarity_hash(content)
 
-    # Check for duplicates
     for hash in previous_hashes:
         bit_difference = np.sum(np.abs(np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash]])))
         if bit_difference <= k:
@@ -434,12 +438,17 @@ def is_duplicate(content, url, previous_hashes, k = 5):
     
     return False
 
-
-
-
-
-
 # _______________ OLD UNUSED METHODS __________________-
+"""
+def add_to_collection(url: str, page_content: str, filename: str) -> None:
+    Add the URL and page content to a text document in the collection.
+    :param url: The URL of the page.
+    :param page_content: The content of the page.
+    :param filename: The name of the text document.
+    with open(filename, 'a', encoding='utf-8') as file:
+        file.write(f"URL: {url}\n\n")
+        file.write(f"Page Content:\n{page_content}\n\n")
+"""
 #     def crawl(self, frontier: List[str], index: int):
 #         """
 #         Crawls the web with the given frontier
@@ -539,8 +548,6 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
 # crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
 # crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
-crawler2 = FocusedWebCrawler()
-crawler2.crawl(crawler2.frontier, index_db=crawler2.index_db)
 
 # # Print the visited URLs to verify the crawling process
 # print("Visited URLs:")
