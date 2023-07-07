@@ -82,8 +82,9 @@ class FocusedWebCrawler:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
             index_path = os.path.join("data_files", 'forward_index.joblib')
+            inverted_index_path = os.path.join("data_files", "inverted_index.joblib")
             self.index = load_index(index_path)
-
+            self.inverted_index_db = load_index(inverted_index_path)
             self.index_db = load_index()
         else:
             self.frontier = PriorityQueue()
@@ -91,6 +92,7 @@ class FocusedWebCrawler:
                 self.frontier.put((1, doc))
             self.visited = set()
             self.index_db = {}
+            self.inverted_index_db = {}
         # Maximum pages to be indexed
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
@@ -175,8 +177,10 @@ class FocusedWebCrawler:
             #duplicate detection
             if is_duplicate(page_content, self.hashvalues):
                 continue
-
-            self.index(index_db, url, page_content, num_pages_crawled)
+            # Add the URL and page content to the index
+            if page_priority == 1: #save only english pages with tübingen content
+                self.inverted_index(page_content, num_pages_crawled)
+                self.index(url, num_pages_crawled)
 
             self.hashvalues[url]=compute_similarity_hash(page_content)
 
@@ -185,17 +189,20 @@ class FocusedWebCrawler:
                 try:
                     # Use temporary files for saving
                     temp_index_path = os.path.join(tempfile.gettempdir(), "temp_forward_index.joblib")
+                    temp_inverted_index_path = os.path.join(tempfile.gettempdir(), "temp_inverted_index.joblib")
                     temp_visited_path = os.path.join(tempfile.gettempdir(), "temp_visited_pages.json")
                     temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.joblib")
 
                     # Save to temporary files
-                    save_index(temp_index_path, index_db)
+                    save_index(temp_index_path, self.index_db)
+                    save_index(temp_index_path, self.inverted_index_db)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
                     file_folder = "data_files"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
+                    os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
                     os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
 
@@ -220,7 +227,30 @@ class FocusedWebCrawler:
         :param index_db: The location of the local index storing the discovered documents.
         :return:
         """
-        index_db[key] = (url, doc)
+        self.index_db[key] = url
+
+
+    def inverted_index(self,  doc:str, key) -> None:
+        """
+        Add a document to the inverted index. You need (at least) two parameters:
+        :param doc: The document to be indexed
+        :param key 
+        :return:
+        """
+        documents = preprocessing(doc)
+        terms = documents.split()
+        for position, term in enumerate(terms):
+            if term not in self.inverted_index_db:
+                self.inverted_index_db[term] = [[key, [position]]]
+            else:
+                found = False
+                for entry in self.inverted_index_db[term]:
+                    if entry[0] == key:
+                        entry[1].append(position)
+                        found = True
+                        break
+                if not found:
+                    self.inverted_index_db[term].append([key, [position]])
 
     def detect_language(self, text: str) -> str:
         """
