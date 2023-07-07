@@ -17,7 +17,8 @@ import urllib3
 from bs4 import BeautifulSoup
 # For checking whether a page is English or German
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
-
+from utils import preprocessing
+from Embedder import Embedder
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
     save_index
 
@@ -78,14 +79,16 @@ class FocusedWebCrawler:
         :param frontier: np.ndarray of urls (Strings) or None if the past search should be continued!
         """
         # If no frontier is given --> Load the frontier, visited pages and index from a previous search
+        self.embedder = Embedder('roberta-base')
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
             index_path = os.path.join("data_files", 'forward_index.joblib')
             inverted_index_path = os.path.join("data_files", "inverted_index.joblib")
-            self.index = load_index(index_path)
+            embedding_index_path = os.path.join("data_files", "embedding_index.joblib")
             self.inverted_index_db = load_index(inverted_index_path)
-            self.index_db = load_index()
+            self.index_db = load_index(index_path)
+            self.index_embeddings_db = load_index(embedding_index_path)
         else:
             self.frontier = PriorityQueue()
             for doc in frontier:
@@ -93,7 +96,9 @@ class FocusedWebCrawler:
             self.visited = set()
             self.index_db = {}
             self.inverted_index_db = {}
+            self.index_embeddings_db = {}
         # Maximum pages to be indexed
+        self.embedder = Embedder()
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
@@ -179,7 +184,8 @@ class FocusedWebCrawler:
                 continue
             # Add the URL and page content to the index
             if page_priority == 1: #save only english pages with tübingen content
-                self.inverted_index(page_content, num_pages_crawled)
+                preprocessed_page_content = preprocessing(page_content)
+                self.inverted_index(preprocessed_page_content, num_pages_crawled)
                 self.index(url, num_pages_crawled)
 
             self.hashvalues[url]=compute_similarity_hash(page_content)
@@ -219,7 +225,7 @@ class FocusedWebCrawler:
         print(f"Index is: {self.index_db}")
         print(f"took time: {time.time() - sss}")
 
-    def index(self, index_db : dict, url: str, doc: str, key) -> None:
+    def index(self, url: str, doc: str, key) -> None:
         """
         Add a document to the index. You need (at least) two parameters:
         :param url: The URL with which the document was retrieved
@@ -229,16 +235,22 @@ class FocusedWebCrawler:
         """
         self.index_db[key] = url
 
+    def index_embeddings(self,doc: str, key) -> None:
+        """
+        Add a document embedding to the embedding index
+        :param doc: The document to be indexed already preprocessed
+        :param key
+        """
+        self.embedding_index_db[key] = self.embedder.embed(doc)
 
     def inverted_index(self,  doc:str, key) -> None:
         """
         Add a document to the inverted index. You need (at least) two parameters:
-        :param doc: The document to be indexed
+        :param doc: The document to be indexed already preprocessed
         :param key 
         :return:
         """
-        documents = preprocessing(doc)
-        terms = documents.split()
+        terms = doc.split()
         for position, term in enumerate(terms):
             if term not in self.inverted_index_db:
                 self.inverted_index_db[term] = [[key, [position]]]
