@@ -163,10 +163,13 @@ class FocusedWebCrawler:
                 continue
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
-                if is_valid_url(link) and not (link in self.visited):
-                    frontier.put((page_priority, link))
-                else:
+                if not (link in self.visited):
+                  if is_valid_url(link):
+                      frontier.put((page_priority, link))
+                  else:
                     print(f"An invalid URL has been found and could not be added to the frontier: {link}")
+                else:
+                    print(f"The URL has already been visited. Skipping:{link}")
             # Add the URL and page content to the index
 
             #duplicate detection
@@ -547,7 +550,8 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.tasteatlas.com/local-food-in-tubingen',
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
+
+crawler = FocusedWebCrawler(frontier=urls)
 crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
 
 # # Print the visited URLs to verify the crawling process
