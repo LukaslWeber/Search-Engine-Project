@@ -8,8 +8,6 @@ from typing import List
 from urllib.parse import urljoin, urlparse
 import requests
 import json
-import hashlib
-import difflib
 from simhash import Simhash
 from typing import Dict
 
@@ -24,7 +22,7 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
     save_index
 
 
-#  TODO: Was mit deutschen Seiten die keinen englischen Content haben?
+# TODO: Was mit deutschen Seiten die keinen englischen Content haben?
 #           --> Könnte man übersetzen Sicherstellen, dass wir auf der englischen Seite bleiben oder
 #           deutsche auf niedrigere PRIOO setzen --> Rufe detect_language auf und checke ob die Sprache en ist
 # DONE: Duplicate Detections
@@ -83,6 +81,9 @@ class FocusedWebCrawler:
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
+            index_path = os.path.join("data_files", 'forward_index.joblib')
+            self.index = load_index(index_path)
+
             self.index_db = load_index()
         else:
             self.frontier = PriorityQueue()
@@ -169,7 +170,7 @@ class FocusedWebCrawler:
             # Add the URL and page content to the index
 
             #duplicate detection
-            if is_duplicate(page_content, url, self.hashvalues):
+            if is_duplicate(page_content, self.hashvalues):
                 continue
 
             self.index(index_db, url, page_content, num_pages_crawled)
@@ -421,7 +422,7 @@ def compute_similarity_hash(page_content: str, k: int = 5) -> str:
     return binary_hash
     
 
-def is_duplicate(content: str, previous_hashes: Dict[str,str] , k: int = 5):
+def is_duplicate(content: str, previous_hashes , k: int = 5):
     """
     Method that checks a document against an existing collection of previsouly seen documents for near duplicates
     :param content: page content of the current page
@@ -546,8 +547,8 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.tasteatlas.com/local-food-in-tubingen',
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
         'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-# crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
-# crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
+crawler = FocusedWebCrawler(max_pages=5, frontier=urls)
+crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
 
 # # Print the visited URLs to verify the crawling process
 # print("Visited URLs:")
@@ -574,7 +575,7 @@ test['some url'] = compute_similarity_hash(content3)
 #for i in test:
 #    print(test[i])
 #hashes = [compute_similarity_hash(content), compute_similarity_hash(content2)]
-dup = is_duplicate(content31, "url", test)
+#dup = is_duplicate(content31, test)
 #print("document is duplicate:")
 #print(dup)
 
