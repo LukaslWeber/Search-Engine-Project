@@ -3,8 +3,8 @@ import time
 def main():
 
 	#create inverted index
-	documents = ['Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam',
-		'nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam']
+	documents = ['Lorem ipsum dolor sit amet, consetetur ipsum sadipscing elitr, sed diam',
+		'nonumy eirmod ipsum tempor invidunt ut labore et dolore magna aliquyam']
 
 	preprocessed_documents = [doc.lower() for doc in documents]
 	inverted_index = invert_index(preprocessed_documents)
@@ -42,7 +42,6 @@ def invert_index(documents):
                         break
                 if not found:
                     inverted_index[term].append([doc_id, [position]])
-                    
     return dict(sorted(inverted_index.items()))
 	#TODO sorting takes up much time, do this more efficiently
 	#output: {'term1': [[docID1, [pos1, pos2, ...]],[docID2, [pos4, pos7]], ...], 'term2': [[docID5, [pos1, pos2, ...]], ...}

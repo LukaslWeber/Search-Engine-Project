@@ -1,5 +1,6 @@
 import nltk
 from nltk.corpus import stopwords
+from string import punctuation
 nltk.download('stopwords')
 stopwords = set(stopwords.words('english'))
 from nltk.stem import WordNetLemmatizer
@@ -13,6 +14,8 @@ lower case
 stop word removal 
 lemmatization
 '''
+#TODO: replace umlaute, alle satzzeichen raus
+
 
 def preprocessing(text):
     text = text.lower()
@@ -22,7 +25,8 @@ def preprocessing(text):
 
     # Remove stopwords from the tokenized words
     words = [word for word in words if word not in stopwords]       
-
+    
+    words = [word for word in words if word not in punctuation]
 
     # Lemmatize each word in the list
     lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
