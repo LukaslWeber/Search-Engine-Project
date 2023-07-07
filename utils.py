@@ -6,7 +6,7 @@ stopwords = set(stopwords.words('english'))
 from nltk.stem import WordNetLemmatizer
 nltk.download('wordnet')
 lemmatizer = WordNetLemmatizer()
-
+import re
 '''
 Function is performing preprocessing on the text and the query
 Steps:
@@ -20,6 +20,12 @@ lemmatization
 def preprocessing(text):
     text = text.lower()
 
+
+    # Replace umlauts with their respective digraphs
+    text = re.sub(r'[ÄÖÜäöü]', lambda m: {'Ä':'ae', 'Ö':'oe', 'Ü':'ue', 'ä':'ae', 'ö':'oe', 'ü':'ue'}[m.group()], text)
+    
+    # remove punctation if they are at the end of a word
+    text = re.sub(r"([.,;:!?]+)\s", " ", text)
     # Tokenize the text into individual words
     words = text.split()
 
@@ -35,3 +41,9 @@ def preprocessing(text):
     lemmatized_text = ' '.join(lemmatized_words)
 
     return lemmatized_text
+
+
+if __name__ == "__main__":
+    test = "This Tübingen is a test."
+    text = "Hello, world! This is a sample sentence; it ends with a period. "
+    print(preprocessing(text))
