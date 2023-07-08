@@ -3,11 +3,12 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM, RobertaTokenizer, 
 from utils import preprocessing
 import numpy as np
 import math
+import torch
 class Embedder:
     def __init__(self, model_name : str='roberta-base', max_length : int = 512):
         if model_name == 'roberta-base':
             self.tokenizer = RobertaTokenizer.from_pretrained(model_name)
-            self.model = RobertaModel.from_pretrained(model_name)
+            self.model = RobertaModel.from_pretrained(model_name, output_hidden_states=True)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForMaskedLM.from_pretrained(model_name)
@@ -23,20 +24,24 @@ class Embedder:
         token_count = len(encoded_input)
         if token_count > self.max_length: # now token must be splitted up
             split = math.ceil(token_count/self.max_length)
-            embeddings = []
+            inputs = []
+            masks = []
             for i in range(split):
                 chunk = encoded_input[i*self.max_length:(i+1)*self.max_length]
                 tokenized_input = self.tokenizer.encode_plus(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
-                print(tokenized_input)
-                output = self.model(**tokenized_input)
-                embedding = output.last_hidden_state[0][0].detach().numpy() # the embedding of the first token CLS
-                embeddings.append(embedding)
-            return np.mean(embeddings, axis=0) # average of the embeddings
+                inputs.append(tokenized_input['input_ids'])
+                masks.append(tokenized_input['attention_mask'])
+            bt_inputs = torch.stack(inputs, dim=0).squeeze()
+            bt_masks = torch.stack(masks, dim=0).squeeze()
         else:
-            tokenized_input = self.tokenizer.encode_plus(encoded_input, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
-            output = self.model(**tokenized_input)
-            embedding = output.last_hidden_state[0][0].detach().numpy() # the embedding of the first token CLS
-            return embedding
+            tokenized_input = self.tokenizer.encode_plus(encoded_input, add_special_tokens=True, return_tensors='pt')
+            bt_inputs = tokenized_input['input_ids']
+            bt_masks = tokenized_input['attention_mask']
+        with torch.no_grad():
+            output = self.model(input_ids=bt_inputs, attention_mask=bt_masks)
+            token_embeddings = output.hidden_states[-2] #take the second to last
+            total_embedding = torch.mean(token_embeddings, dim=(0,1)).detach().numpy()
+        return total_embedding
 
 if __name__ == '__main__':
     embedder = Embedder('roberta-base')
