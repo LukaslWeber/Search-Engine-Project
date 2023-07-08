@@ -1,14 +1,19 @@
 #Class for creating the embedding of the documents
-from transformers import AutoTokenizer, AutoModelForMaskedLM, RobertaTokenizer, RobertaModel
+from transformers import AutoTokenizer, AutoModelForMaskedLM, RobertaTokenizer, RobertaModel, BertTokenizer, BertModel
+from File_loader import load_index
 from utils import preprocessing
 import numpy as np
 import math
 import torch
+import os
 class Embedder:
     def __init__(self, model_name : str='roberta-base', max_length : int = 512):
         if model_name == 'roberta-base':
             self.tokenizer = RobertaTokenizer.from_pretrained(model_name)
             self.model = RobertaModel.from_pretrained(model_name, output_hidden_states=True)
+        if model_name == 'bert-base-uncased':
+            self.tokenizer = BertTokenizer.from_pretrained(model_name)
+            self.model = BertModel.from_pretrained(model_name, output_hidden_states=True)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForMaskedLM.from_pretrained(model_name)
@@ -44,9 +49,9 @@ class Embedder:
         return total_embedding
 
 if __name__ == '__main__':
-    embedder = Embedder('roberta-base')
+    embedder = Embedder('bert-base-uncased')
     text = 'I love to eat apples'
-    text = '''
+    text1 = '''
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas dignissim velit et velit convallis, eget consequat lacus efficitur. Nulla facilisi. In hac habitasse platea dictumst. Integer faucibus risus sed lobortis ullamcorper. Fusce rhoncus efficitur rutrum. Nullam rutrum bibendum velit, sed gravida massa ullamcorper ac. Quisque at ligula ultricies, faucibus est vel, placerat arcu. Vestibulum tincidunt finibus elit, a convallis felis dapibus vel. Donec convallis dolor vel turpis aliquam pulvinar. Ut posuere elit vitae venenatis tincidunt. In non orci at metus facilisis viverra. Nunc lacinia erat nec iaculis tristique. Phasellus ac pulvinar lorem. Nam faucibus quam a mi facilisis tempus.
 
     Sed vitae aliquet arcu, at hendrerit tortor. Pellentesque sit amet ligula vel tellus laoreet dignissim et a urna. Mauris et lacinia lectus. Ut vitae purus eget nisl aliquet rhoncus. Sed aliquam sapien sed tincidunt sollicitudin. Mauris lobortis ex vel laoreet pharetra. Mauris eget nunc sit amet leo finibus pellentesque nec vel nisi. Aliquam erat volutpat. Cras ac augue ut turpis gravida faucibus a et ex. In hac habitasse platea dictumst. Sed commodo diam in dictum finibus. Morbi tristique tellus justo, at interdum velit facilisis nec. Curabitur ut nisl non nulla tempus laoreet. Nunc consequat, risus id aliquet pharetra, lectus massa consectetur dolor, sit amet consectetur ligula massa eget quam.
@@ -70,6 +75,14 @@ if __name__ == '__main__':
     Etiam porttitor, lacus ut suscipit scelerisque, mauris felis iaculis velit, nec ultricies tortor urna ut enim. Nam varius vulputate velit ac volutpat. Nunc finibus enim felis, sit amet ullamcorper justo pharetra id. Nam vehicula metus sit amet tortor luctus viverra. Morbi ac felis non lacus egestas posuere. Proin blandit finibus nunc, eu condimentum dui pulvinar eu. Aenean ultrices nulla vitae eros tristique scelerisque. Fusce a est vel mi fermentum blandit. Vivamus tincidunt ultricies bibendum. Nunc pulvinar purus eget lacus aliquam, eget ullamcorper est dictum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Sed in finibus dolor. Sed id scelerisque purus, eu semper ligula. Aliquam gravida ullamcorper purus, nec sollicitudin neque dictum non.
     '''
     text = preprocessing(text)
-
-    embedding = embedder.embed(text)
+    path = 'data_files'
+    #embedding = embedder.embed(text)
+    embed = np.zeros((21, 768))
+    index = os.path.join(path, 'temp_forward_index.joblib')
+    db = load_index(index)
+    for key,value in db.items():
+        print(value[1])
+        text = preprocessing(value[1])
+        embed[key] = embedder.embed(text)
+    np.save(os.path.join(path, 'temp_embed_bert_base_uncased_preprocessing.npy'), embed)
     print(embedding.shape)

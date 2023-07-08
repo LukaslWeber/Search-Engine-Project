@@ -2,6 +2,7 @@ from File_loader import load_index
 from Embedder import Embedder
 from utils import preprocessing
 import numpy as np
+import os
 #Class for doing the ranking of the documents
 
 class Ranker:
@@ -9,8 +10,12 @@ class Ranker:
         self.index_db = load_index(index_path)
         self.inverted_index_db = load_index(inverted_index_path)
         self.doc_count = len(self.index_db)
-        self.relevant_docs_count = relevant_docs_count
+        if self.doc_count < relevant_docs_count:
+            self.relevant_docs_count = self.doc_count
+        else:
+            self.relevant_docs_count = relevant_docs_count
         self.load_embedding_index(embedding_index_path)	
+        print(self.embeddings)
     def rank(self, query: str, method: str) -> list:
         #TODO how to get the relevant documents for TD-IDF
         pass
@@ -22,7 +27,7 @@ class Ranker:
         :param embedding path
         """
         #TODO check if embedding was encoded with the some model 
-        model_name = "roberta-base"
+        model_name = "bert-base-uncased"
         embedding_index = load_index(embedding_index_path)
         # convert the embedding index to a numpy array
         self.id = []
@@ -46,6 +51,9 @@ class Ranker:
         sorted_docs = []
         for i in range(self.relevant_docs_count):
             id = relevant_indecs[i]
+            print(id)
+            print(self.index_db[self.id[id]][0])
+            print(cosine_similarity[id])
             sorted_docs.append([self.id[id], cosine_similarity[id]])
         return sorted_docs
 
@@ -81,3 +89,16 @@ class Ranker:
             id = relevant_indecs[i]
             sorted_docs.append([relevant_docs[id], TF_IDF[id]])
         return sorted_docs
+    
+
+if __name__ == "__main__":
+    path = 'data_files'
+    index = os.path.join(path, 'temp_forward_index.joblib')
+    index_inverted = os.path.join(path, 'temp_inverted_index.joblib')
+    index_embedding = os.path.join(path, 'temp_embedding_index.joblib')
+    ranker = Ranker(index, index_inverted, index_embedding)
+    ranker.embeddings = np.load(os.path.join(path, 'temp_embed_bert_base_uncased_preprocessing.npy'))
+    res = ranker.embedding_ranking("startup")
+    print(res)
+    #query = "What is the capital of Germany?"
+    #print(ranker.embedding_ranking(query))
