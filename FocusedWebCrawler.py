@@ -202,7 +202,7 @@ class FocusedWebCrawler:
 
                     # Save to temporary files
                     save_index(temp_index_path, self.index_db)
-                    save_index(temp_index_path, self.inverted_index_db)
+                    save_index(temp_inverted_index_path, self.inverted_index_db)
                     save_index(temp_embedding_index_path, self.index_embeddings_db)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
