@@ -25,7 +25,8 @@ def preprocessing(text):
     text = re.sub(r'[ÄÖÜäöü]', lambda m: {'Ä':'ae', 'Ö':'oe', 'Ü':'ue', 'ä':'ae', 'ö':'oe', 'ü':'ue'}[m.group()], text)
     
     # remove punctation if they are at the end of a word
-    text = re.sub(r"([.,;:!?]+)\s", " ", text)
+    #text = re.sub(r"([.,;:!?'-]+)\s", " ", text)
+    text = re.sub(r"[.,;:!?\'\-/-]", "", text)
     # Tokenize the text into individual words
     words = text.split()
 
