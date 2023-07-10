@@ -18,11 +18,18 @@
                 <li>{{ result.1 }}</li>
             {% endfor %}
         </ul>
+        {% if show_previous %}
+            <form action="/search/" method="get" style="display:inline;">
+                <input type="hidden" name="queryField" value="{{ query }}">
+                <input type="hidden" name="start_index" value="{{ previous_start_index }}">
+                <button type="submit">Show Previous 10 Results</button>
+            </form>
+        {% endif %}
         {% if show_more %}
-            <form action="/search/" method="get">
-                <input type="hidden" name="query" value="{{ query }}">
+            <form action="/search/" method="get" style="display: inline">
+                <input type="hidden" name="queryField" value="{{ query }}">
                 <input type="hidden" name="start_index" value="{{ start_index }}">
-                <button type="submit">Show More Results</button>
+                <button type="submit">Show {{ remaining_elements }} More Results</button>
             </form>
         {% endif %}
     </body>
