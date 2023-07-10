@@ -2,11 +2,11 @@
     <head>
         <h1>Search Page</h1>
 
-        <a href="{% url 'mainview' %}">Go to main view</a>
+        <a href="{% url 'startpage' %}">Go to main view</a>
 
         <form action="/search/" method="get">
-          <label for="queryField">Do you want to search anything else????????????</label><br>
-          <input type="text" id="queryField" name="query" value={{ query }}>
+          <label for="queryLabel">Do you want to search anything else????????????</label><br>
+          <input type="text" id="queryField" name="queryField" value="{{ query }}">
           <button type="submit">Search</button>
         </form>
     </head>
@@ -14,16 +14,16 @@
     <body>
         <h6>You searched for: {{ query }}</h6>
         <ul>
-            <li>{{ pos_1 }}</li>
-            <li>{{ pos_2 }}</li>
-            <li>{{ pos_3 }}</li>
-            <li>{{ pos_4 }}</li>
-            <li>{{ pos_5}}</li>
-            <li>{{ pos_6 }}</li>
-            <li>{{ pos_7 }}</li>
-            <li>{{ pos_8 }}</li>
-            <li>{{ pos_9 }}</li>
-            <li>{{ pos_10 }}</li>
+            {% for result in search_results %}
+                <li>{{ result.1 }}</li>
+            {% endfor %}
         </ul>
+        {% if show_more %}
+            <form action="/search/" method="get">
+                <input type="hidden" name="query" value="{{ query }}">
+                <input type="hidden" name="start_index" value="{{ start_index }}">
+                <button type="submit">Show More Results</button>
+            </form>
+        {% endif %}
     </body>
 </html>

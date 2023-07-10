@@ -20,6 +20,6 @@ import SearchEnginePageGenerator.views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("search/", include('SearchEnginePageGenerator.urls'), name='search_results'),
-    path('', SearchEnginePageGenerator.views.open_mainview, name='mainview')
+    path("search/", include('SearchEnginePageGenerator.urls'), name='search'),
+    path('', SearchEnginePageGenerator.views.open_mainview, name='startpage')
 ]
