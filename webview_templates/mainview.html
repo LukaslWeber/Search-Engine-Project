@@ -5,10 +5,12 @@
     <h1>Hello World</h1>
     {% endif %}
 
-    <form>
-      <label for="fname">WAS WILLST DU SUCHEN????????????</label><br>
-      <br>
-      <input type="text" id="fname" name="fname" value="John">
-      <button type="button">Suche</button>
+
+
+    <form action="/search/" method="get">
+        <label for="queryField">What do you want to search</label><br>
+        <input type="text" id="queryField" name="query" placeholder="Enter your query">
+        <button type="submit">Search</button>
     </form>
+
 </html>

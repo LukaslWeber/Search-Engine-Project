@@ -16,7 +16,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+import SearchEnginePageGenerator.views
+
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("search/", include('SearchEnginePageGenerator.urls'))
+    path("search/", include('SearchEnginePageGenerator.urls'), name='search_results'),
+    path('', SearchEnginePageGenerator.views.open_mainview, name='mainview')
 ]
