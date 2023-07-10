@@ -1,26 +1,29 @@
 <html>
-    <h1>Search Page</h1>
+    <head>
+        <h1>Search Page</h1>
 
-    <a href="{% url 'mainview' %}">Go to main view</a>
+        <a href="{% url 'mainview' %}">Go to main view</a>
 
-    <form action="/search/" method="get">
-      <label for="fname">Do you want to search anything else????????????</label><br>
-      <br>
-      <input type="text" id="fname" name="fname" value={{ query }}>
-      <button type="button">Suche</button>
-    </form>
+        <form action="/search/" method="get">
+          <label for="queryField">Do you want to search anything else????????????</label><br>
+          <input type="text" id="queryField" name="query" value={{ query }}>
+          <button type="submit">Search</button>
+        </form>
+    </head>
 
-    <h6>You searched for: {{ query }}</h6>
-    <ul>
-        <li>{{ pos_1 }}</li>
-        <li>{{ pos_2 }}</li>
-        <li>{{ pos_3 }}</li>
-        <li>{{ pos_4 }}</li>
-        <li>{{ pos_5}}</li>
-        <li>{{ pos_6 }}</li>
-        <li>{{ pos_7 }}</li>
-        <li>{{ pos_8 }}</li>
-        <li>{{ pos_9 }}</li>
-        <li>{{ pos_10 }}</li>
-    </ul>
+    <body>
+        <h6>You searched for: {{ query }}</h6>
+        <ul>
+            <li>{{ pos_1 }}</li>
+            <li>{{ pos_2 }}</li>
+            <li>{{ pos_3 }}</li>
+            <li>{{ pos_4 }}</li>
+            <li>{{ pos_5}}</li>
+            <li>{{ pos_6 }}</li>
+            <li>{{ pos_7 }}</li>
+            <li>{{ pos_8 }}</li>
+            <li>{{ pos_9 }}</li>
+            <li>{{ pos_10 }}</li>
+        </ul>
+    </body>
 </html>
