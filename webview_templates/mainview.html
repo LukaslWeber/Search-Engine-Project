@@ -1,16 +1,26 @@
-<html>
-    {% if name %}
-    <h1>Hello {{ name }}</h1>
-    {% else %}
-    <h1>Hello World</h1>
-    {% endif %}
+{% extends "base.html" %}
 
+{% block content %}
+<section class="section">
+    <div class="container">
+        {% if name %}
+        <h1 class="title">Hello, {{ name }}</h1>
+        {% else %}
+        <h1 class="title">Hello, World</h1>
+        {% endif %}
 
+        <form action="/search/" method="get">
+            <div class="field">
+                <label class="label" for="queryField">What do you want to search</label>
+                <div class="control">
+                    <input class="input" type="text" id="queryField" name="queryField" placeholder="Enter your query">
+                </div>
+            </div>
+            <div class="control">
+                <button class="button is-link" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
 
-    <form action="/search/" method="get">
-        <label for="queryLabel">What do you want to search</label><br>
-        <input type="text" id="queryField" name="queryField" placeholder="Enter your query">
-        <button type="submit">Search</button>
-    </form>
-
-</html>

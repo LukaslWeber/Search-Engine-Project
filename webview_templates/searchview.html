@@ -1,36 +1,46 @@
-<html>
-    <head>
-        <h1>Search Page</h1>
+{% extends "base.html" %}
+{% block content %}
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Search Page</h1>
 
-        <a href="{% url 'startpage' %}">Go to main view</a>
+            <a class="button is-info" href="{% url 'startpage' %}">Go to main view</a>
 
-        <form action="/search/" method="get">
-          <label for="queryLabel">Do you want to search anything else????????????</label><br>
-          <input type="text" id="queryField" name="queryField" value="{{ query }}">
-          <button type="submit">Search</button>
-        </form>
-    </head>
-
-    <body>
-        <h6>You searched for: {{ query }}</h6>
-        <ul>
-            {% for result in search_results %}
-                <li>{{ result.1 }}</li>
-            {% endfor %}
-        </ul>
-        {% if show_previous %}
-            <form action="/search/" method="get" style="display:inline;">
-                <input type="hidden" name="queryField" value="{{ query }}">
-                <input type="hidden" name="start_index" value="{{ previous_start_index }}">
-                <button type="submit">Show Previous 10 Results</button>
+            <form class="form" action="/search/" method="get">
+                <div class="field">
+                    <label class="label" for="queryLabel">Do you want to search anything else?</label>
+                    <div class="control">
+                        <input class="input" type="text" id="queryField" name="queryField" value="{{ query }}">
+                    </div>
+                </div>
+                <div class="control">
+                    <button class="button is-link" type="submit">Search</button>
+                </div>
             </form>
-        {% endif %}
-        {% if show_more %}
-            <form action="/search/" method="get" style="display: inline">
-                <input type="hidden" name="queryField" value="{{ query }}">
-                <input type="hidden" name="start_index" value="{{ start_index }}">
-                <button type="submit">Show {{ remaining_elements }} More Results</button>
-            </form>
-        {% endif %}
-    </body>
-</html>
+
+            <h6 class="subtitle is-6">You searched for: {{ query }}</h6>
+
+            <ul>
+                {% for result in search_results %}
+                    <li>{{ result.1 }}</li>
+                {% endfor %}
+            </ul>
+
+            {% if show_previous %}
+                <form class="form" action="/search/" method="get" style="display:inline;">
+                    <input type="hidden" name="queryField" value="{{ query }}">
+                    <input type="hidden" name="start_index" value="{{ previous_start_index }}">
+                    <button class="button is-link" type="submit">Show Previous 10 Results</button>
+                </form>
+            {% endif %}
+
+            {% if show_more %}
+                <form class="form" action="/search/" method="get" style="display: inline">
+                    <input type="hidden" name="queryField" value="{{ query }}">
+                    <input type="hidden" name="start_index" value="{{ start_index }}">
+                    <button class="button is-link" type="submit">Show {{ remaining_elements }} More Results</button>
+                </form>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

@@ -1,0 +1,38 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+        <style>
+            body {
+                background-color: #363636;
+                color: #F5F5F5;
+            }
+
+            .title, .label, .subtitle {
+                color: #F5F5F5;
+            }
+
+            .button.is-info, .button.is-link {
+                background-color: #266D7A; /* Turquoise */
+            }
+
+            .button.is-info:hover, .button.is-link:hover {
+                background-color: #FF9944; /* Muted Orange */
+            }
+
+            .input {
+                background-color: #525252; /* Darker Grey */
+
+
+        color: #F5F5F5; /* Light Grey */
+            }
+
+            .input::placeholder {
+                color: #ADADAD; /* Placeholder Text Color */
+            }
+        </style>
+    </head>
+    <body>
+        {% block content %}
+        {% endblock %}
+    </body>
+</html>
