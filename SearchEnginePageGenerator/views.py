@@ -31,8 +31,8 @@ def search(request):
     if 'search_results' not in request.session:
         print("Generating results")
         # TODO: results = ranker.rank(query, )
-        results = [(1, "abc"), (2, "def"), (3, "ghi"), (4, "jkl"), (5, "mno"), (6, "pqr"), (7, "stu"), (8, "vwx"), (9, "yz"), (10, "LOL"), (11, "11"),
-                   (1, "abc"), (2, "def"), (3, "ghi"), (4, "jkl"), (5, "mno"), (6, "pqr"), (7, "stu"), (8, "vwx"), (9, "yz"), (10, "LOL"), (11, "11")]
+        results = [(1, "result 1"), (2, "result 2"), (3, "result 3"), (4, "result 4"), (5, "result 5"), (6, "result 6"), (7, "result 7"), (8, "result 8"), (9, "result 9"), (10, "result 10"), (11, "result 11"),
+                   (12, "result 12"), (13, "result 13"), (14, "result 14"), (15, "result 15")]
         # Store search results and query in the session
         request.session['search_results'] = results
         request.session['query'] = query
@@ -40,18 +40,19 @@ def search(request):
         results = request.session['search_results']
 
     # Perform search operation based on the query
+    results_per_page = 11
     start_index = int(request.GET.get('start_index', 0))
-    previous_start_index = start_index - 10
-    limited_results = results[start_index: start_index + 10]
-    show_more = start_index + 10 < len(results)
-    show_previous = start_index >= 10
-    remaining_elements = len(results) - (start_index + 10)
+    previous_start_index = start_index - results_per_page
+    limited_results = results[start_index: start_index + results_per_page]
+    show_more = start_index + results_per_page < len(results)
+    show_previous = start_index >= results_per_page
+    remaining_elements = len(results) - (start_index + results_per_page)
 
 
     context = {
         'query': query,
         'search_results': limited_results,
-        'start_index': start_index + 10,
+        'start_index': start_index + results_per_page,
         'previous_start_index': previous_start_index,
         'show_more': show_more,
         'show_previous': show_previous,

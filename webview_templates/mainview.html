@@ -2,24 +2,38 @@
 
 {% block content %}
 <section class="section">
-    <div class="container">
+    <div class="container is-widescreen">
         {% if name %}
-        <h1 class="title">Hello, {{ name }}</h1>
+        <h1 class="title">What do you want to search?</h1>
         {% else %}
         <h1 class="title">Hello, World</h1>
         {% endif %}
-
-        <form action="/search/" method="get">
-            <div class="field">
-                <label class="label" for="queryField">What do you want to search</label>
-                <div class="control">
-                    <input class="input" type="text" id="queryField" name="queryField" placeholder="Enter your query">
-                </div>
+        <h1 class="py-6 my-6"></h1>
+        <h1 class="py-3 my-3"></h1>
+        <div class="container">
+            <img src="/placeholder.jpg" alt="" style="max-height:70px">
+        </div>
+        <div class="columns is-centered">
+            <div class="column is-8">
+                <form class="form" action="/search/" method="get">
+                    <div class="field is-grouped">
+                        <div class="control is-expanded">
+                            <input class="input is-large" type="text" id="queryField" name="queryField" placeholder="Enter your query">
+                        </div>
+                        <div class="control">
+                            <button class="button is-link is-large" type="submit">
+                                <span class="icon">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-            <div class="control">
-                <button class="button is-link" type="submit">Search</button>
-            </div>
-        </form>
+        </div>
+        <!-- spacing. padding, margin + xy/tlbr top left..-->
+        <h1 class="py-6 my-6"></h1>
+        <h1 class="py-6 my-6"></h1>
     </div>
 </section>
 {% endblock %}

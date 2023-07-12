@@ -1,30 +1,75 @@
 {% extends "base.html" %}
 {% block content %}
+    <style>
+        .box.has-border {
+            border: 1px solid white;
+        }
+        .input:focus {
+            outline-color: #FFA500;
+        }
+    </style>
+
     <section class="section">
-        <div class="container">
+        <div class="container is-widescreen">
             <h1 class="title">Search Page</h1>
 
-            <a class="button is-info" href="{% url 'startpage' %}">Go to main view</a>
-
-            <form class="form" action="/search/" method="get">
-                <div class="field">
-                    <label class="label" for="queryLabel">Do you want to search anything else?</label>
-                    <div class="control">
-                        <input class="input" type="text" id="queryField" name="queryField" value="{{ query }}">
+            <div class="columns is-centered">
+                <div class="column is-8">
+                    <div class="buttons is-centered">
+                        <div class="field has-addons">
+                            <div class="control">
+                                <a class="button is-info" href="{% url 'startpage' %}">
+                                    <span class="icon">
+                                        <i class="fas fa-arrow-left"></i>
+                                    </span>
+                                </a>
+                            </div>
+                            <div class="control is-expanded">
+                                <form class="form" action="/search/" method="get">
+                                    <div class="field">
+                                        <div class="control is-expanded">
+                                            <input class="input is-expanded" type="text" id="queryField" name="queryField" value="{{ query }}">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="control">
+                                <form class="form" action="/search/" method="get">
+                                    <div class="control">
+                                        <button class="button is-link" type="submit">
+                                            <span class="icon">
+                                                <i class="fas fa-search"></i>
+                                            </span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="control">
-                    <button class="button is-link" type="submit">Search</button>
-                </div>
-            </form>
+            </div>
 
             <h6 class="subtitle is-6">You searched for: {{ query }}</h6>
 
-            <ul>
-                {% for result in search_results %}
-                    <li>{{ result.1 }}</li>
+            <div class="columns">
+                {% if search_results %}
+                    <div class="column is-full">
+                        <div class="box has-background-grey-dark has-text-light has-border">
+                            <p>{{ search_results.0.1 }}</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="columns is-multiline">
+                {% for result in search_results|slice:"1:11" %}
+                    <div class="column is-half">
+                        <div class="box has-background-grey-dark has-text-light has-border">
+                            <p>{{ result.1 }}</p>
+                        </div>
+                    </div>
                 {% endfor %}
-            </ul>
+            </div>
 
             {% if show_previous %}
                 <form class="form" action="/search/" method="get" style="display:inline;">

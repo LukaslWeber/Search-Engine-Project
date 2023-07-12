@@ -1,6 +1,7 @@
 <html>
     <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
         <style>
             body {
                 background-color: #363636;
@@ -16,8 +17,14 @@
             }
 
             .button.is-info:hover, .button.is-link:hover {
-                background-color: #FF9944; /* Muted Orange */
+                background-color: #FF9944; /*  Orange */
             }
+
+            .input:focus {
+                border-color: #FF9944; /* Orange */
+                box-shadow: 0 0 0 0.5px #FF9944; /* Orange */
+            }
+
 
             .input {
                 background-color: #525252; /* Darker Grey */
@@ -29,8 +36,11 @@
             .input::placeholder {
                 color: #ADADAD; /* Placeholder Text Color */
             }
+
         </style>
     </head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+
     <body>
         {% block content %}
         {% endblock %}
