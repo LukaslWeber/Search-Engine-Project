@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <section class="section">
     <div class="container is-widescreen">
@@ -8,13 +8,13 @@
         {% else %}
         <h1 class="title">Hello, World</h1>
         {% endif %}
-        <h1 class="py-6 my-6"></h1>
-        <h1 class="py-3 my-3"></h1>
-        <div class="container">
-            <img src="/placeholder.jpg" alt="" style="max-height:70px">
-        </div>
+        <h1 class="py-2 my-2"></h1>
         <div class="columns is-centered">
             <div class="column is-8">
+                <div class="has-text-centered" style="margin-bottom: -20px;">
+                    <img src="{% static 'tubingen.png' %}" alt="My Image" style="max-height: 800px; width: 200%;">
+
+                </div>
                 <form class="form" action="/search/" method="get">
                     <div class="field is-grouped">
                         <div class="control is-expanded">
@@ -31,10 +31,8 @@
                 </form>
             </div>
         </div>
-        <!-- spacing. padding, margin + xy/tlbr top left..-->
         <h1 class="py-6 my-6"></h1>
         <h1 class="py-6 my-6"></h1>
     </div>
 </section>
 {% endblock %}
-
