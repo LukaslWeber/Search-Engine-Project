@@ -97,6 +97,7 @@ class FocusedWebCrawler:
             self.index_db = {}
             self.inverted_index_db = {}
             self.index_embeddings_db = {}
+            self.index_embeddings_pre_db = {}
         # Maximum pages to be indexed
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
@@ -183,6 +184,7 @@ class FocusedWebCrawler:
                 continue
             # Add the URL and page content to the index
             if page_priority == 1: #save only english pages with tübingen content
+                self.index_embeddings(page_content, num_pages_crawled, pre = False)
                 preprocessed_page_content = preprocessing(page_content)
                 self.index_embeddings(preprocessed_page_content, num_pages_crawled)
                 self.inverted_index(preprocessed_page_content, num_pages_crawled)
@@ -194,16 +196,18 @@ class FocusedWebCrawler:
             if num_pages_crawled % 25 == 0 or num_pages_crawled == self.max_pages:
                 try:
                     # Use temporary files for saving
-                    temp_index_path = os.path.join(tempfile.gettempdir(), "temp_forward_index.joblib")
-                    temp_inverted_index_path = os.path.join(tempfile.gettempdir(), "temp_inverted_index.joblib")
-                    temp_embedding_index_path = os.path.join(tempfile.gettempdir(), "temp_embedding_index.joblib")
-                    temp_visited_path = os.path.join(tempfile.gettempdir(), "temp_visited_pages.json")
-                    temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.joblib")
+                    temp_index_path = "temp_forward_index.joblib"
+                    temp_inverted_index_path = "temp_inverted_index.joblib"
+                    temp_embedding_index_path =  self.embedder.model_name +" temp_embedding_index.joblib"
+                    temp_embedding_index_path_pre =  self.embedder.model_name +" temp_embedding_index_pre.joblib"
+                    temp_visited_path = "temp_visited_pages.json"
+                    temp_frontier_path = "temp_frontier_pages.joblib"
 
                     # Save to temporary files
                     save_index(temp_index_path, self.index_db)
                     save_index(temp_inverted_index_path, self.inverted_index_db)
                     save_index(temp_embedding_index_path, self.index_embeddings_db)
+                    save_index(temp_embedding_index_path_pre, self.index_embeddings_pre_db)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
 
@@ -237,13 +241,19 @@ class FocusedWebCrawler:
         """
         self.index_db[key] = (url, content)
 
-    def index_embeddings(self,doc: str, key) -> None:
+
+
+    def index_embeddings(self,doc: str, key, pre = True) -> None:
         """
         Add a document embedding to the embedding index
         :param doc: The document to be indexed already preprocessed
+        :param pre: True if text was preprocessed
         :param key
         """
-        self.index_embeddings_db[key] = self.embedder.embed(doc)
+        if pre:
+            self.index_embeddings_pre_db[key] = self.embedder.embed(doc)
+        else:
+            self.index_embeddings_db[key] = self.embedder.embed(doc)
 
     def inverted_index(self,  doc:str, key) -> None:
         """
