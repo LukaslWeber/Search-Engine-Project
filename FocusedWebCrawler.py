@@ -186,7 +186,7 @@ class FocusedWebCrawler:
                 preprocessed_page_content = preprocessing(page_content)
                 self.index_embeddings(preprocessed_page_content, num_pages_crawled)
                 self.inverted_index(preprocessed_page_content, num_pages_crawled)
-                self.index(url, num_pages_crawled)
+                self.index(url, num_pages_crawled, page_content)
 
             self.hashvalues[url]=compute_similarity_hash(page_content)
 
@@ -227,7 +227,7 @@ class FocusedWebCrawler:
         print(f"Index is: {self.index_db}")
         print(f"took time: {time.time() - sss}")
 
-    def index(self, url: str, key) -> None:
+    def index(self, url: str, key, content) -> None:
         """
         Add a document to the index. You need (at least) two parameters:
         :param url: The URL with which the document was retrieved
@@ -235,7 +235,7 @@ class FocusedWebCrawler:
         :param index_db: The location of the local index storing the discovered documents.
         :return:
         """
-        self.index_db[key] = url
+        self.index_db[key] = (url, content)
 
     def index_embeddings(self,doc: str, key) -> None:
         """
