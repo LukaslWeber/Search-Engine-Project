@@ -30,7 +30,9 @@ class Embedder:
         :return: the embedding of the text
         """
         # splitting the text into sentences
-        encoded_input = self.tokenizer.tokenize(text) # tokenized text into subwords
+        if self.model_name=='roberta-base':
+            return self.embed_roberta(text)# tokenized text into subwords
+        encoded_input = self.tokenizer.tokenize(text)
         token_count = len(encoded_input)
         if token_count > self.max_length: # now token must be splitted up
             split = math.ceil(token_count/self.max_length)
@@ -38,7 +40,13 @@ class Embedder:
             masks = []
             for i in range(split):
                 chunk = encoded_input[i*self.max_length:(i+1)*self.max_length]
-                tokenized_input = self.tokenizer.encode_plus(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
+                print(chunk)
+                if self.model_name == 'roberta-base':
+                    tokenized_input = self.tokenizer(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
+                    print(tokenized_input['input_ids'].shape)
+                else:
+                    tokenized_input = self.tokenizer.encode_plus(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
+                    print(tokenized_input['input_ids'].shape)
                 inputs.append(tokenized_input['input_ids'])
                 masks.append(tokenized_input['attention_mask'])
             bt_inputs = torch.stack(inputs, dim=0).squeeze().to(self.device)
@@ -52,9 +60,36 @@ class Embedder:
             token_embeddings = output.hidden_states[-2] #take the second to last
             total_embedding = torch.mean(token_embeddings, dim=(0,1)).detach().numpy()
         return total_embedding
-
+    
+    def embed_roberta(self,text : str) -> np.array:
+        
+        token_count = len(self.tokenizer.tokenize(text))
+        if token_count > self.max_length: # now token must be splitted up
+            split = math.ceil(token_count/self.max_length)
+            word_increment = math.ceil(len(text.split())/split)
+            inputs = []
+            masks = []
+            for i in range(split):
+                chunk = text.split()[i*word_increment:(i+1)*word_increment]
+                text = ' '.join(chunk)
+                print(text)
+                tokenized_input = self.tokenizer(text, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
+                inputs.append(tokenized_input['input_ids'])
+                masks.append(tokenized_input['attention_mask'])
+            bt_inputs = torch.stack(inputs, dim=0).squeeze().to(self.device)
+            bt_masks = torch.stack(masks, dim=0).squeeze().to(self.device)
+        else:
+            tokenized_input = self.tokenizer(text, add_special_tokens=True, return_tensors='pt')
+            bt_inputs = tokenized_input['input_ids'].to(self.device)
+            bt_masks = tokenized_input['attention_mask'].to(self.device)
+        with torch.no_grad():
+            output = self.model(input_ids=bt_inputs, attention_mask=bt_masks, output_hidden_states = True)
+            token_embeddings = output.hidden_states[-2] #take the second to last
+            total_embedding = torch.mean(token_embeddings, dim=(0,1)).detach().numpy()
+        return total_embedding
+        
 if __name__ == '__main__':
-    embedder = Embedder('bert-base-uncased')
+    embedder = Embedder('roberta-base')
     text = 'I love to eat apples'
     text1 = '''
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas dignissim velit et velit convallis, eget consequat lacus efficitur. Nulla facilisi. In hac habitasse platea dictumst. Integer faucibus risus sed lobortis ullamcorper. Fusce rhoncus efficitur rutrum. Nullam rutrum bibendum velit, sed gravida massa ullamcorper ac. Quisque at ligula ultricies, faucibus est vel, placerat arcu. Vestibulum tincidunt finibus elit, a convallis felis dapibus vel. Donec convallis dolor vel turpis aliquam pulvinar. Ut posuere elit vitae venenatis tincidunt. In non orci at metus facilisis viverra. Nunc lacinia erat nec iaculis tristique. Phasellus ac pulvinar lorem. Nam faucibus quam a mi facilisis tempus.
@@ -79,10 +114,10 @@ if __name__ == '__main__':
 
     Etiam porttitor, lacus ut suscipit scelerisque, mauris felis iaculis velit, nec ultricies tortor urna ut enim. Nam varius vulputate velit ac volutpat. Nunc finibus enim felis, sit amet ullamcorper justo pharetra id. Nam vehicula metus sit amet tortor luctus viverra. Morbi ac felis non lacus egestas posuere. Proin blandit finibus nunc, eu condimentum dui pulvinar eu. Aenean ultrices nulla vitae eros tristique scelerisque. Fusce a est vel mi fermentum blandit. Vivamus tincidunt ultricies bibendum. Nunc pulvinar purus eget lacus aliquam, eget ullamcorper est dictum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Sed in finibus dolor. Sed id scelerisque purus, eu semper ligula. Aliquam gravida ullamcorper purus, nec sollicitudin neque dictum non.
     '''
-    text = preprocessing(text1)
+    text = preprocessing(text)
     print('finished preprocessing')
     path = 'data_files'
-    e = embedder.embed(text)
+    e = embedder.embed(text1)
     print(e.shape)
     print(e)
     #embedding = embedder.embed(text)
