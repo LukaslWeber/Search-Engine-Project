@@ -6,6 +6,7 @@ import numpy as np
 import math
 import torch
 import os
+from typing import Tuple
 class Embedder:
     def __init__(self, model_name : str='roberta-base', max_length : int = 512):
         self.model_name = model_name
@@ -23,6 +24,8 @@ class Embedder:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForMaskedLM.from_pretrained(model_name).to(self.device)
         self.max_length = max_length -2 # start endtoken
+
+        
     def embed(self, text : str) -> np.array:
         """
         Embed a given text into a vector
@@ -31,7 +34,28 @@ class Embedder:
         """
         # splitting the text into sentences
         if self.model_name=='roberta-base':
-            return self.embed_roberta(text)# tokenized text into subwords
+            input, mask =  self.tokenize_roberta(text)# tokenized text into subwords
+        else:
+            input, mask = self.tokenize(text)
+        # if the batch size is too big, the gpu will run out of memory
+        # so we split the batch into smaller batches
+        batch_size = 5
+        if input.shape[0] < batch_size:
+            with torch.no_grad():
+                output = self.model(input_ids=input, attention_mask=mask, output_hidden_states = True)
+                token_embeddings = output.hidden_states[-2] #take the second to last
+                total_embedding = torch.mean(token_embeddings, dim=(0,1)).detach().cpu().numpy()
+        else:
+            split = math.ceil(input.shape[0]/batch_size)
+            embeddings = []
+            for i in range(split):
+                with torch.no_grad():
+                    output = self.model(input_ids=input[i*batch_size:(i+1)*batch_size], attention_mask=mask[i*batch_size:(i+1)*batch_size], output_hidden_states = True)
+                    embeddings.append(output.hidden_states[-2].detach().cpu().numpy())
+            total_embedding = np.mean(np.concatenate(embeddings, axis=0), axis=(0,1))
+        return total_embedding
+    
+    def tokenize(self, text : str) -> Tuple[ torch.tensor, torch.tensor]:
         encoded_input = self.tokenizer.tokenize(text)
         token_count = len(encoded_input)
         if token_count > self.max_length: # now token must be splitted up
@@ -40,13 +64,7 @@ class Embedder:
             masks = []
             for i in range(split):
                 chunk = encoded_input[i*self.max_length:(i+1)*self.max_length]
-                print(chunk)
-                if self.model_name == 'roberta-base':
-                    tokenized_input = self.tokenizer(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
-                    print(tokenized_input['input_ids'].shape)
-                else:
-                    tokenized_input = self.tokenizer.encode_plus(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
-                    print(tokenized_input['input_ids'].shape)
+                tokenized_input = self.tokenizer.encode_plus(chunk, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
                 inputs.append(tokenized_input['input_ids'])
                 masks.append(tokenized_input['attention_mask'])
             bt_inputs = torch.stack(inputs, dim=0).squeeze().to(self.device)
@@ -55,13 +73,9 @@ class Embedder:
             tokenized_input = self.tokenizer.encode_plus(encoded_input, add_special_tokens=True, return_tensors='pt')
             bt_inputs = tokenized_input['input_ids'].to(self.device)
             bt_masks = tokenized_input['attention_mask'].to(self.device)
-        with torch.no_grad():
-            output = self.model(input_ids=bt_inputs, attention_mask=bt_masks)
-            token_embeddings = output.hidden_states[-2] #take the second to last
-            total_embedding = torch.mean(token_embeddings, dim=(0,1)).detach().numpy()
-        return total_embedding
+        return bt_inputs, bt_masks
     
-    def embed_roberta(self,text : str) -> np.array:
+    def tokenize_roberta(self,text : str) -> np.array:
         
         token_count = len(self.tokenizer.tokenize(text))
         if token_count > self.max_length: # now token must be splitted up
@@ -72,8 +86,7 @@ class Embedder:
             for i in range(split):
                 chunk = text.split()[i*word_increment:(i+1)*word_increment]
                 text = ' '.join(chunk)
-                print(text)
-                tokenized_input = self.tokenizer(text, add_special_tokens=True, return_tensors='pt', padding= 'max_length')
+                tokenized_input = self.tokenizer(text, add_special_tokens=True, return_tensors='pt', padding= 'max_length', truncation= True)
                 inputs.append(tokenized_input['input_ids'])
                 masks.append(tokenized_input['attention_mask'])
             bt_inputs = torch.stack(inputs, dim=0).squeeze().to(self.device)
@@ -82,14 +95,11 @@ class Embedder:
             tokenized_input = self.tokenizer(text, add_special_tokens=True, return_tensors='pt')
             bt_inputs = tokenized_input['input_ids'].to(self.device)
             bt_masks = tokenized_input['attention_mask'].to(self.device)
-        with torch.no_grad():
-            output = self.model(input_ids=bt_inputs, attention_mask=bt_masks, output_hidden_states = True)
-            token_embeddings = output.hidden_states[-2] #take the second to last
-            total_embedding = torch.mean(token_embeddings, dim=(0,1)).detach().numpy()
-        return total_embedding
+        return bt_inputs, bt_masks
         
+
 if __name__ == '__main__':
-    embedder = Embedder('roberta-base')
+    embedder = Embedder('bert-base-uncased')
     text = 'I love to eat apples'
     text1 = '''
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas dignissim velit et velit convallis, eget consequat lacus efficitur. Nulla facilisi. In hac habitasse platea dictumst. Integer faucibus risus sed lobortis ullamcorper. Fusce rhoncus efficitur rutrum. Nullam rutrum bibendum velit, sed gravida massa ullamcorper ac. Quisque at ligula ultricies, faucibus est vel, placerat arcu. Vestibulum tincidunt finibus elit, a convallis felis dapibus vel. Donec convallis dolor vel turpis aliquam pulvinar. Ut posuere elit vitae venenatis tincidunt. In non orci at metus facilisis viverra. Nunc lacinia erat nec iaculis tristique. Phasellus ac pulvinar lorem. Nam faucibus quam a mi facilisis tempus.
@@ -117,9 +127,8 @@ if __name__ == '__main__':
     text = preprocessing(text)
     print('finished preprocessing')
     path = 'data_files'
-    e = embedder.embed(text1)
+    e = embedder.embed(text)
     print(e.shape)
-    print(e)
     #embedding = embedder.embed(text)
     #embed = np.zeros((21, 768))
     #index = os.path.join(path, 'temp_forward_index.joblib')
