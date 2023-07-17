@@ -42,8 +42,9 @@ def has_tuebingen(string_to_check: str) -> bool:
     """
     tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
     tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
+    tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
 
-    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(string_to_check):
+    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(string_to_check) or tuebingen_reg.search(string_to_check):
         return True
 
     return False

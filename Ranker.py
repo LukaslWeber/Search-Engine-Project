@@ -6,7 +6,7 @@ import os
 #Class for doing the ranking of the documents
 
 class Ranker:
-    def __init__(self, index_path: str, inverted_index_path:str, embedding_index_path: str, relevant_docs_count: int=100):
+    def __init__(self, index_path: str, inverted_index_path:str, embedding_index_path: str, results_path: str, relevant_docs_count: int=100, ):
         self.index_db = load_index(index_path)
         self.inverted_index_db = load_index(inverted_index_path)
         self.doc_count = len(self.index_db)
@@ -15,16 +15,40 @@ class Ranker:
         else:
             self.relevant_docs_count = relevant_docs_count
         self.load_embedding_index(embedding_index_path)
+        if not self.check():
+            raise ValueError("The indecies do not have the same length")
+        self.embedder = Embedder('roberta-base') #must be set to the same model as the one used for the embedding index
+        self.rank_method = "embedding" #TODO: change to TF-IDF
+        self.results_path = results_path
+
+
+
+    def check(self)-> bool:
+        """
+        Check if all the indecies are loaded correctly
+        :return: True if the index is loaded, False otherwise
+        """
+        index_len = len(self.index_db)
+        embedding_number = self.embeddings.shape[0]
+        ids = len(self.id)
+        print("Index length: ", index_len)
+        print("Embedding number: ", embedding_number)
+        print("ID length: ", ids)
+        if index_len == embedding_number and index_len == ids:
+            return True
+        else:
+            return False
+
     def rank(self, query: str) -> list:
         #TODO how to get the relevant documents for TD-IDF
         #just use and 
-        relevant_docs = self.document_selection(query)
-        print(relevant_docs)
-        matches = self.listintersection(relevant_docs[0], relevant_docs[1])
-        print(matches)
-        result = self.TF_IDF(query, matches)
-        print(result)
-        pass
+
+        if self.rank_method == "embedding":
+            sorted_docs = self.embedding_ranking(query)
+        elif self.rank_method == "TF-IDF":
+            relevant_docs = self.query_union(query)
+            sorted_docs = self.TF_IDF(query, relevant_docs)
+        self.save_results(sorted_docs, query)
 
     
     def load_embedding_index(self, embedding_index_path: str):
@@ -32,8 +56,7 @@ class Ranker:
         Load the embedding index
         :param embedding path
         """
-        #TODO check if embedding was encoded with the some model 
-        model_name = "bert-base-uncased"
+        #TODO check if embedding was encoded with the some model
         embedding_index = load_index(embedding_index_path)
         # convert the embedding index to a numpy array
         self.id = []
@@ -42,7 +65,6 @@ class Ranker:
             self.id.append(key)
             embedding.append(value)
         self.embeddings = np.stack(embedding, axis=0)
-        self.embedder = Embedder(model_name)
 
     def document_selection(self, query: str) -> list:
         """
@@ -57,6 +79,26 @@ class Ranker:
             if word in self.inverted_index_db.keys():
                 relevant_docs.append(self.inverted_index_db[word])
         return relevant_docs
+
+
+    def query_union(self,query: str) -> list:
+        """
+        Select the documents that are relevant for the query
+        :param query: the query string
+        :return: the list of relevant documents
+        """
+        query = preprocessing(query)
+        query = query.split()
+        relevant_words = []
+        for word in query:
+            if word in self.inverted_index_db.keys():
+                relevant_words.append(self.inverted_index_db[word])
+        relevant_docs = []
+        for word in relevant_words:
+            for doc in word:
+                relevant_docs.append(doc[0])
+        return sorted(set(relevant_docs))
+
 
     def listintersection(self,lista, listb):
         pointerA=0
@@ -76,7 +118,7 @@ class Ranker:
         return matches 
 
     def embedding_ranking(self,query: str) -> list:
-        #query = preprocessing(query)
+        query = preprocessing(query)
         query_embedding = self.embedder.embed(query)
         query_norm = np.linalg.norm(query_embedding)
         embeddings_norm = np.linalg.norm(self.embeddings, axis=1)
@@ -93,6 +135,19 @@ class Ranker:
             sorted_docs.append([self.id[id], cosine_similarity[id]])
         return sorted_docs
 
+
+    def save_results(self, results: list, query: str):
+        """
+        Save the results in the given path
+        :param results: the list of results
+        :param query: the query string
+        """
+        file_name = query.replace(" ", "_") + "_"+ self.rank_method+ ".txt"
+        file_path = os.path.join(self.results_path, file_name)
+        with open(file_path, "w") as f:
+            for i,result in enumerate(results):
+                f.write(str(i) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
+        
 
 
     def TF_IDF(self, query: str, relevant_docs : list) -> list:
@@ -111,7 +166,7 @@ class Ranker:
         IDF = np.zeros(len(query))
         for i in range(len(query)):
             IDF[i] = np.log10(self.doc_count/len(self.inverted_index_db[query[i]]))
-        TF = np.zeros((necessary_docs, len(query)))
+        TF = np.zeros((len(relevant_docs), len(query)))
         for i,v in enumerate(query):
             docs = self.inverted_index_db[v]
             for doc in docs:
@@ -128,15 +183,15 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'data_files'
-    index = os.path.join(path, 'temp_forward_index.joblib')
-    index_inverted = os.path.join(path, 'temp_inverted_index.joblib')
-    index_embedding = os.path.join(path, 'temp_embedding_index.joblib')
-    ranker = Ranker(index, index_inverted, index_embedding)
-    ranker.embeddings = np.load(os.path.join(path, 'temp_embed_bert_base_uncased_preprocessing.npy'))
-    #ranker.embeddings = np.load(os.path.join(path, 'temp_embed_bert_base_uncased.npy'))
-    res = ranker.embedding_ranking("tübingen attractions")
+    path = 'run1'
+    index = os.path.join(path, 'forward_index.joblib')
+    index_inverted = os.path.join(path, 'inverted_index.joblib')
+    index_embedding = os.path.join(path, 'roberta-base_temp_embedding_index_pre.joblib')
+    result_path = os.path.join(path, 'results_pre')
+    ranker = Ranker(index, index_inverted, index_embedding, result_path, 1000)
+    ranker.rank("food and drinks")
     ranker.rank("tübingen attractions")
-    #print(res)
-    #query = "What is the capital of Germany?"
-    #print(ranker.embedding_ranking(query))
+
+    #ranker.rank_method = "TF-IDF"
+    #ranker.rank("food and drinks")
+    
