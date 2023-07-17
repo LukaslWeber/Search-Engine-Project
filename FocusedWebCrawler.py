@@ -50,6 +50,25 @@ def has_tuebingen(string_to_check: str) -> bool:
     return False
 
 
+def has_tuebingen_content(string_to_check: str) -> bool:
+    """
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
+    The uppercase should be ignored here
+    :param string_to_check: The string that is to be checked
+    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
+    """
+    pattern = r'(t(?:ü|ue|u)?binge[nr])'
+    matches = re.findall(pattern, string_to_check, re.IGNORECASE)
+
+    pattern_location = re.compile( r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
+
+
+    if len(matches)> 4 or pattern_location.search(string_to_check):
+        return True
+    else:
+        return False
+
+
 def get_priority(contains_tuebingen: bool, language: str) -> int or None:
     """
     Returns the priority of a document given the information if it contains Tübingen and its langauge
@@ -150,8 +169,7 @@ class FocusedWebCrawler:
                 continue
 
             # Check if "Tübingen" or "Tuebingen" is contained somewhere in the URL or document
-            contains_tuebingen = has_tuebingen(url) or has_tuebingen(page_header) or \
-                                 has_tuebingen(page_content) or has_tuebingen(page_footer)
+            contains_tuebingen = has_tuebingen(url) or has_tuebingen_content(" ".join([page_header,page_content,page_footer]))
             start = timeit.default_timer()
             page_language = self.detect_language(page_content)
             print(f" Detecting language took: {timeit.default_timer() - start:.2f}s")
@@ -185,9 +203,9 @@ class FocusedWebCrawler:
                 continue
             # Add the URL and page content to the index
             if page_priority == 1: #save only english pages with tübingen content
-                self.index_embeddings(page_content, num_pages_crawled, pre = False)
+                #self.index_embeddings(page_content, num_pages_crawled, pre = False)
                 preprocessed_page_content = preprocessing(page_content)
-                self.index_embeddings(preprocessed_page_content, num_pages_crawled)
+                #self.index_embeddings(preprocessed_page_content, num_pages_crawled)
                 self.inverted_index(preprocessed_page_content, num_pages_crawled)
                 self.index(url, num_pages_crawled, page_content)
 
