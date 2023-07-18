@@ -17,10 +17,22 @@ class Ranker:
         self.load_embedding_index(embedding_index_path)
         if not self.check():
             raise ValueError("The indecies do not have the same length")
-        self.embedder = Embedder('roberta-base') #must be set to the same model as the one used for the embedding index
+        self.embedder = Embedder('bert-base-uncased') #must be set to the same model as the one used for the embedding index
         self.rank_method = "embedding" #TODO: change to TF-IDF
         self.results_path = results_path
+        self.b = 0.75
+        self.k1 = 1.2
+        self.calculate_avgdl() #TODO: calculate the average document length
 
+
+    def calculate_avgdl(self):
+        """
+        Calculate the average document length
+        """
+        avgdl = 0
+        for key, value in self.index_db.items():
+            avgdl += value[1]
+        self.avgdl = avgdl/len(self.index_db)
 
 
     def check(self)-> bool:
@@ -49,6 +61,8 @@ class Ranker:
             relevant_docs = self.query_union(query)
             sorted_docs = self.TF_IDF(query, relevant_docs)
         self.save_results(sorted_docs, query)
+        return [self.index_db[result[0]][0] for result in sorted_docs]
+        #TODO return ordere list of links
 
     
     def load_embedding_index(self, embedding_index_path: str):
@@ -150,6 +164,41 @@ class Ranker:
         
 
 
+    def BM25(self, query: str, relevant_docs : list) -> list:
+        """
+        Calculate the BM25 score for the relevant documents
+        :param query: the query string
+        :param relevant_docs: the list of relevant documents
+        :return: the top 100 documents with the highest BM25 score as a list of tuples (doc_id, score)
+        """
+        #TODO
+        if len(relevant_docs) < self.relevant_docs_count:
+            necessary_docs = len(relevant_docs)
+        else:
+            necessary_docs = self.relevant_docs_count
+        query = preprocessing(query)
+        query = query.split()
+        IDF = np.zeros(len(query))
+        for i in range(len(query)):
+            n_q = len(self.inverted_index_db[query[i]])
+            IDF[i] = np.log(((self.doc_count-n_q+0.5)/(n_q+0.5))+1)
+        TF = np.zeros((len(relevant_docs), len(query)))
+        for i,v in enumerate(query):
+            docs = self.inverted_index_db[v]
+            for doc in docs:
+                doc_id = doc[0]
+                if doc_id in relevant_docs:
+                    f = len(doc[1])
+                    D = self.index_db[doc_id][1] # TODO
+                    TF[relevant_docs.index(doc_id), i] = (f * (self.k1+1))/(f+self.k1*(1-self.b+self.b*(D/self.avgdl)))
+        BM25 = TF @ IDF # for all the relevant documents
+        relevant_indecs = np.flip(np.argsort(BM25))
+        sorted_docs = []
+        for i in range(necessary_docs):
+            id = relevant_indecs[i]
+            sorted_docs.append([relevant_docs[id], BM25[id]])
+        return sorted_docs
+
     def TF_IDF(self, query: str, relevant_docs : list) -> list:
         """
         Calculate the TF-IDF score for the relevant documents
@@ -183,14 +232,17 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'run1'
+    path = 'data_files_bert'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
-    index_embedding = os.path.join(path, 'roberta-base_temp_embedding_index_pre.joblib')
+    index_embedding = os.path.join(path, 'bert-base-uncased_temp_embedding_index_pre.joblib')
     result_path = os.path.join(path, 'results_pre')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 1000)
     ranker.rank("food and drinks")
     ranker.rank("tübingen attractions")
+    #ranker.rank_method = "TF-IDF"
+    #ranker.rank("food and drinks")
+    #ranker.rank("tübingen attractions")
 
     #ranker.rank_method = "TF-IDF"
     #ranker.rank("food and drinks")

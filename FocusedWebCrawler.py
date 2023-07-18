@@ -203,7 +203,7 @@ class FocusedWebCrawler:
                 continue
             # Add the URL and page content to the index
             if page_priority == 1: #save only english pages with tübingen content
-                #self.index_embeddings(page_content, num_pages_crawled, pre = False)
+                self.index_embeddings(page_content, num_pages_crawled, pre = False)
                 preprocessed_page_content = preprocessing(page_content)
                 #self.index_embeddings(preprocessed_page_content, num_pages_crawled)
                 self.inverted_index(preprocessed_page_content, num_pages_crawled)
@@ -258,7 +258,8 @@ class FocusedWebCrawler:
         :param index_db: The location of the local index storing the discovered documents.
         :return:
         """
-        self.index_db[key] = (url, content)
+        length = len(content.split())
+        self.index_db[key] = (url, length)
 
 
 
