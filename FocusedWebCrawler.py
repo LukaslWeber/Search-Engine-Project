@@ -663,28 +663,29 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 
 # -----------------------------
 # just testing
-#urls = ['https://uni-tuebingen.de/en/',
-#        'https://www.tuebingen.mpg.de/en',
-#        'https://www.tuebingen.de/en/',
-#        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-#        'https://www.dzne.de/en/about-us/sites/tuebingen',
-#        'https://www.britannica.com/place/Tubingen-Germany',
-#        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-#        'https://wikitravel.org/en/T%C3%BCbingen',
-#        'https://www.tasteatlas.com/local-food-in-tubingen',
-#        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-#        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-#
-urls = [
-    'https://uni-tuebingen.de/en/',
-    'https://uni-tuebingen.de/',
-    "https://www.tripadvisor.com/Attractions-g198539-Activities-c36-Tubingen_Baden_Wurttemberg.html",
-    'https://allevents.in/tubingen/food-drinks'
-]
-crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
-print("crawling")
-freeze_support()
-crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
+if __name__ == '__main__':
+    #urls = ['https://uni-tuebingen.de/en/',
+    #        'https://www.tuebingen.mpg.de/en',
+    #        'https://www.tuebingen.de/en/',
+    #        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+    #        'https://www.dzne.de/en/about-us/sites/tuebingen',
+    #        'https://www.britannica.com/place/Tubingen-Germany',
+    #        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+    #        'https://wikitravel.org/en/T%C3%BCbingen',
+    #        'https://www.tasteatlas.com/local-food-in-tubingen',
+    #        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+    #        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+    #
+    freeze_support()
+    urls = [
+        'https://uni-tuebingen.de/en/',
+        'https://uni-tuebingen.de/',
+        "https://www.tripadvisor.com/Attractions-g198539-Activities-c36-Tubingen_Baden_Wurttemberg.html",
+        'https://allevents.in/tubingen/food-drinks'
+    ]
+    crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
+    print("crawling")
+    crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
 
 
 
