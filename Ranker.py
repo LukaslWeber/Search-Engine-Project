@@ -18,7 +18,7 @@ class Ranker:
         if not self.check():
             raise ValueError("The indecies do not have the same length")
         self.embedder = Embedder('bert-base-uncased') #must be set to the same model as the one used for the embedding index
-        self.rank_method = "embedding" #TODO: change to TF-IDF
+        self.rank_method = "BM25" #TODO: change to TF-IDF
         self.results_path = results_path
         self.b = 0.75
         self.k1 = 1.2
@@ -57,9 +57,12 @@ class Ranker:
 
         if self.rank_method == "embedding":
             sorted_docs = self.embedding_ranking(query)
-        elif self.rank_method == "TF-IDF":
+        else:
             relevant_docs = self.query_union(query)
-            sorted_docs = self.TF_IDF(query, relevant_docs)
+            if self.rank_method == "BM25":
+                sorted_docs = self.BM25(query, relevant_docs)
+            if self.rank_method == "TF-IDF":
+                sorted_docs = self.TF_IDF(query, relevant_docs)
         self.save_results(sorted_docs, query)
         return [self.index_db[result[0]][0] for result in sorted_docs]
         #TODO return ordere list of links
@@ -72,6 +75,8 @@ class Ranker:
         """
         #TODO check if embedding was encoded with the some model
         embedding_index = load_index(embedding_index_path)
+        print("Embedding index loaded")
+        print(embedding_index)
         # convert the embedding index to a numpy array
         self.id = []
         embedding = []
@@ -232,12 +237,12 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'data_files_bert'
+    path = 'data_files_bert_2'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
-    index_embedding = os.path.join(path, 'bert-base-uncased_temp_embedding_index_pre.joblib')
-    result_path = os.path.join(path, 'results_pre')
-    ranker = Ranker(index, index_inverted, index_embedding, result_path, 1000)
+    index_embedding ="/home/franksim/Search-Engine-Project/data_files_bert_2/bert-base-uncased temp_embedding_index_pre.joblib" #os.path.join(path, 'bert-base-uncased_temp_embedding_index.joblib')
+    result_path = os.path.join(path, 'results')
+    ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
     ranker.rank("food and drinks")
     ranker.rank("tübingen attractions")
     #ranker.rank_method = "TF-IDF"

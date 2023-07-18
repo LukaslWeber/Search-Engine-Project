@@ -99,7 +99,7 @@ class FocusedWebCrawler:
         :param frontier: np.ndarray of urls (Strings) or None if the past search should be continued!
         """
         # If no frontier is given --> Load the frontier, visited pages and index from a previous search
-        self.embedder = Embedder('roberta-base')
+        self.embedder = Embedder('bert-base-uncased')
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
@@ -231,7 +231,7 @@ class FocusedWebCrawler:
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
-                    file_folder = "data_files"
+                    file_folder = "data_files_bert_2"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
                     os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
