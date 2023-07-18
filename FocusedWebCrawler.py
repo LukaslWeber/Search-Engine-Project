@@ -5,6 +5,8 @@ import re
 import tempfile
 import time
 import timeit
+from multiprocessing import freeze_support
+
 from PriorityQueue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
@@ -401,7 +403,7 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
         process = multiprocessing.Process(target=crawl_website, args=(url, headers, max_retries, retry_delay))
         process.start()
 
-        process.join(5.0)
+        process.join(timeout=10.0)
 
         if process.is_alive():
             process.terminate()
@@ -412,6 +414,7 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
             raw_html_content = result_queue.get()
             break
 
+    print("taking parts of html now")
     if raw_html_content != "":
         # Decode the retrieved html web page
         html_content = raw_html_content.decode('utf-8', 'ignore')
@@ -680,6 +683,7 @@ urls = [
 ]
 crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
 print("crawling")
+freeze_support()
 crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
 
 
