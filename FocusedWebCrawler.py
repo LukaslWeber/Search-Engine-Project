@@ -1,4 +1,6 @@
+import multiprocessing
 import os
+import random
 import re
 import tempfile
 import time
@@ -21,16 +23,24 @@ from utils import preprocessing
 from Embedder import Embedder
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
     save_index
+from fake_useragent import UserAgent
 
-
-# TODO: Was mit deutschen Seiten die keinen englischen Content haben?
-#           --> Könnte man übersetzen Sicherstellen, dass wir auf der englischen Seite bleiben oder
-#           deutsche auf niedrigere PRIOO setzen --> Rufe detect_language auf und checke ob die Sprache en ist
-# DONE: Duplicate Detections
-# TODO: Nicht zu wenig zeit zwischen den Anfragen
-# TODO: vielleicht eine methode um den crawler zu resetten?
-# DONE: ROBOTS.TXT BEACHTEN
-# DONE: index beim neu laden
+user_agent_list = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1',
+            'Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1)',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18363',
+            'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+            'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16.2',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'
+            'Mozilla/5.0 (Linux; U; Android 4.0.3; ko-kr; LG-L160L Build/IML74K) AppleWebkit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30',
+            UserAgent.random,
+            UserAgent.googlechrome,
+            UserAgent.edge
+        ]
 
 
 def has_tuebingen(string_to_check: str) -> bool:
@@ -154,7 +164,7 @@ class FocusedWebCrawler:
                 self.visited.add(url)
                 continue
 
-            print(f"Crawling page: {num_pages_crawled} with url: {url}")
+            print(f"Crawling page: {num_pages_crawled} with url: {url}", flush=True)
 
             # get page content and links on the page
             start = timeit.default_timer()
@@ -201,6 +211,7 @@ class FocusedWebCrawler:
             #duplicate detection
             if is_duplicate(page_content, self.hashvalues):
                 continue
+
             # Add the URL and page content to the index
             if page_priority == 1: #save only english pages with tübingen content
                 self.index_embeddings(page_content, num_pages_crawled, pre = False)
@@ -210,6 +221,7 @@ class FocusedWebCrawler:
                 self.index(url, num_pages_crawled, page_content)
 
             self.hashvalues[url]=compute_similarity_hash(page_content)
+
 
             # Save everything to files after every 25 documents and at the end of crawling
             if num_pages_crawled % 25 == 0 or num_pages_crawled == self.max_pages:
@@ -339,6 +351,33 @@ def get_base_url(url: str) -> str:
     return base_url
 
 
+def crawl_website(url: str, headers:dict, max_retries: int=1, retry_delay:float=2):
+    """
+    Returns a webpage
+    :param url:
+    :param headers:
+    :param max_retries:
+    :param retry_delay:
+    :return:
+    """
+    retry = urllib3.Retry(total=3, redirect=3)
+    timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
+    http = urllib3.PoolManager(retries=retry, timeout=timeout, headers=headers)
+
+    raw_html_content = ""
+    for retry_count in range(max_retries):
+        try:
+            with http.request('GET', url, headers=headers, preload_content=False) as response:
+                raw_html_content = b""
+                for chunk in response.stream(4096):
+                    raw_html_content += chunk
+            break
+        except Exception as e:
+            print(f"Attempt {retry_count + 1} failed. Retrying after {retry_delay} seconds. Exception: {e}")
+            time.sleep(retry_delay)
+
+    return raw_html_content
+
 def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float = 2) \
         -> (List[str], str, str, str) or (None, None, None, None):
     """
@@ -348,22 +387,30 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
     :param url: URL of the website that should be retrieved
     """
     # handling failed requests
-    retry = urllib3.Retry(total=3, redirect=3)
-    timeout = urllib3.Timeout(connect=2.0, read=2.0)
-    http = urllib3.PoolManager(retries=retry, timeout=timeout)
 
     raw_html_content = ""
-    for retry in range(max_retries):
-        try:
-            with http.request('GET', url, preload_content=False) as response:
-                # Stream the response data in chunks
-                raw_html_content = b""
-                for chunk in response.stream(4096):
-                    raw_html_content += chunk
-            break  # Break out of the retry loop if the request is successful
-        except Exception as e:
-            print(f"Attempt {retry + 1} failed. Retrying after {retry_delay} seconds., exception: {e}")
-            time.sleep(retry_delay)
+    for user_agent in user_agent_list:
+        print("trying user agent " + user_agent)
+        headers = {
+            'Host': get_base_url(url),
+            'User-Agent': user_agent,
+            'Referer': 'https://www.google.com/',
+            'Accept-Language': '*'
+        }
+        result_queue = multiprocessing.Queue()
+        process = multiprocessing.Process(target=crawl_website, args=(url, headers, max_retries, retry_delay))
+        process.start()
+
+        process.join(5.0)
+
+        if process.is_alive():
+            process.terminate()
+            process.join()
+            print(f"Process with User-Agent '{user_agent}' terminated due to timeout.")
+        else:
+            print(f"Process with User-Agent '{user_agent}' completed successfully.")
+            raw_html_content = result_queue.get()
+            break
 
     if raw_html_content != "":
         # Decode the retrieved html web page
@@ -625,8 +672,15 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 #        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
 #        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
 #
-#crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
-#crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
+urls = [
+    'https://uni-tuebingen.de/en/',
+    'https://uni-tuebingen.de/',
+    "https://www.tripadvisor.com/Attractions-g198539-Activities-c36-Tubingen_Baden_Wurttemberg.html",
+    'https://allevents.in/tubingen/food-drinks'
+]
+crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
+print("crawling")
+crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
 
 
 
