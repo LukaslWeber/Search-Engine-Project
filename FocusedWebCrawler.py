@@ -6,6 +6,9 @@ import tempfile
 import time
 import timeit
 from multiprocessing import freeze_support, Queue
+from urllib.error import HTTPError
+
+from urllib3.exceptions import NewConnectionError
 
 from PriorityQueue import PriorityQueue
 from typing import List
@@ -29,17 +32,18 @@ from fake_useragent import UserAgent
 
 ua = UserAgent()
 user_agent_list = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"'
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1',
-    'Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1)',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18363',
-    'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
-    'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16.2',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'
     'Mozilla/5.0 (Linux; U; Android 4.0.3; ko-kr; LG-L160L Build/IML74K) AppleWebkit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30',
+    'Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1)',
+    'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16.2',
     ua.random,
     ua.googlechrome,
     ua.edge
@@ -377,8 +381,11 @@ def crawl_website(q: Queue, url: str, headers: dict, max_retries: int = 1, retry
                 raw_html_content = b""
                 for chunk in response.stream(4096):
                     raw_html_content += chunk
-            print("  returning raw html content")
-            break
+                if response.status == 200:
+                    print("  returning raw html content")
+                    break
+                else:
+                    raise Exception("Exception in GET request. The response status was not 200 OK.")
         except Exception as e:
             print(f"  Attempt {retry_count + 1} failed. Retrying after {retry_delay} seconds. Exception: {e}")
             time.sleep(retry_delay)
@@ -505,9 +512,9 @@ def get_robots_content(url: str) -> str:
         except UnicodeDecodeError:
             content = response.data.decode('latin-1')
         return content
-    except urllib3.exceptions.HTTPError as e:
+    except HTTPError as e:
         print(f"HTTP error occurred while retrieving robots.txt: {str(e)}")
-    except urllib3.exceptions.NewConnectionError as e:
+    except NewConnectionError as e:
         print(f"URL error occurred while retrieving robots.txt: {str(e)}")
     except Exception as e:
         print(f"Another error occured while retrieving robots.txt: {str(e)}")
