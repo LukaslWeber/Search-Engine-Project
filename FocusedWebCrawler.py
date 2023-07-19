@@ -165,14 +165,13 @@ class FocusedWebCrawler:
             if url in self.visited:
                 continue
 
-            print("getting robots content", flush=True)
             # skip urls that are disallowed in the robots.txt file
             robots_content = get_robots_content(url)
-            if not is_allowed(user_agent, url, robots_content):
+            if not is_allowed(url, robots_content):
                 self.visited.add(url)
                 continue
 
-            time.sleep(0.25)
+            time.sleep(0.15)
 
             print(f"Crawling page: {num_pages_crawled} with url: {url}", flush=True)
 
@@ -214,9 +213,9 @@ class FocusedWebCrawler:
                     if is_valid_url(link):
                         frontier.put((page_priority, link))
                     else:
-                        print(f"An invalid URL has been found and could not be added to the frontier: {link}")
+                        print(f" An invalid URL has been found and could not be added to the frontier: {link}")
                 else:
-                    print(f"The URL has already been visited. Skipping:{link}")
+                    print(f" The URL has already been visited. Skipping:{link}")
             # Add the URL and page content to the index
 
             # duplicate detection
@@ -360,17 +359,14 @@ def get_base_url(url: str) -> str:
     return base_url
 
 
-def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float = 2) \
-        -> (List[str], str, str, str) or (None, None, None, None):
+def send_get_request(url: str, max_retries: int = 1, retry_delay: float = 2) -> bytes:
     """
-    Method that gets the html content of  the given URL and gives the contained header, content, footer and URLs back
-    :param url: URL of the website that should be retrieved
+    Method that sends an http get request and returns the http page in bytes
+    :param url: URL to send the GET request to
     :param max_retries: Optional, Number of maximum retries if the get request fails
     :param retry_delay: Optional, The delay between requests if a get request fails
-    :return (links:List[str], header_content:str, body_content:str, footer_content:str)
+    :return: HTML bytes of the internet page
     """
-    # handling failed requests
-
     raw_html_content = b""
     for idx, user_agent in enumerate(user_agent_list):
         if raw_html_content == b"":
@@ -382,19 +378,18 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
                 'Accept-Language': '*'
             }
             http = urllib3.PoolManager(retries=retry, timeout=timeout, headers=headers)
-            print("  crawling website")
             for retry_count in range(max_retries):
                 try:
                     with http.request('GET', url, headers=headers, preload_content=False) as response:
                         raw_html_content = b""
                         for chunk in response.stream(4096):
                             raw_html_content += chunk
-                        print("response status is:" + str(response.status))
                         if response.status == 200:
                             break
                         else:
                             raw_html_content = b""
-                            raise Exception("Exception in GET request. The response status was not 200 OK.")
+                            raise Exception(
+                                f"Exception in GET request. The response status was not 200 OK but was {response.status}.")
                 except Exception as e:
                     error_str = f"Attempt {retry_count + 1} failed. "
                     if retry_count > 1:
@@ -402,8 +397,19 @@ def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float 
                     error_str += f"Exception: {e}"
                     print(error_str)
                     time.sleep(retry_delay)
+    return raw_html_content
 
-    print(" doing further processing")
+
+def get_web_content_and_urls(url: str) \
+        -> (List[str], str, str, str) or (None, None, None, None):
+    """
+    Method that gets the html content of  the given URL and gives the contained header, content, footer and URLs back
+    :param url: URL of the website that should be retrieved
+    :return (links:List[str], header_content:str, body_content:str, footer_content:str)
+    """
+    # handling failed requests
+    raw_html_content = send_get_request(url)
+
     if raw_html_content != "" or raw_html_content != b"" or raw_html_content is not None:
         # Decode the retrieved html web page
         html_content = raw_html_content.decode('utf-8', 'ignore')
@@ -467,16 +473,13 @@ def get_robots_content(url: str) -> str:
     """
     root_url = get_base_url(url)
     robots_url = root_url + "/robots.txt"
-    retry = urllib3.Retry(total=3, redirect=3)
-    timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
-    http = urllib3.PoolManager(retries=retry, timeout=timeout)
 
     try:
-        response = http.request('GET', robots_url, preload_content=False)
+        robot_content_bytes = send_get_request(robots_url)
         try:
-            content = response.data.decode('utf-8')
+            content = robot_content_bytes.decode('utf-8', 'ignore')
         except UnicodeDecodeError:
-            content = response.data.decode('latin-1')
+            content = robot_content_bytes.decode('latin-1', 'ignore')
         return content
     except HTTPError as e:
         print(f"HTTP error occurred while retrieving robots.txt: {str(e)}")
@@ -502,10 +505,9 @@ def get_user_agent() -> None or str:
         return None
 
 
-def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
+def is_allowed(url: str, robots_content: str) -> bool:
     """
     Method that checks if crawling a given url is allowed in the current robots.txt file
-    :param user agent: the current user agent
     :param url: current url
     :param robots_content: content of the current robots.txt file
     :return: False if crawling the url is disallowed in robots, True otherwise
@@ -513,12 +515,12 @@ def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
     # get the path of the url without base url ('http://www.example.com/hithere/something/else' -> /hithere/something/else)
     path = urlparse(url).path
     # save rules relevant for the current user agent
-    user_agent_rules = []
+    # user_agent_rules = []
     current_user_agent = None
     for line in robots_content.splitlines():
         if line.lower().startswith("user-agent"):
             current_user_agent = line.split(":")[1].strip()
-        elif line.lower().startswith("disallow") and (current_user_agent == user_agent or current_user_agent == "*"):
+        elif line.lower().startswith("disallow") and current_user_agent == "*":
             disallowed_path = line.split(":")[1].strip()
             if path.startswith(disallowed_path):
                 print(f"disallowed url detected: {path}")
@@ -666,25 +668,17 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 # -----------------------------
 # just testing
 if __name__ == '__main__':
-    # urls = ['https://uni-tuebingen.de/en/',
-    #        'https://www.tuebingen.mpg.de/en',
-    #        'https://www.tuebingen.de/en/',
-    #        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-    #        'https://www.dzne.de/en/about-us/sites/tuebingen',
-    #        'https://www.britannica.com/place/Tubingen-Germany',
-    #        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-    #        'https://wikitravel.org/en/T%C3%BCbingen',
-    #        'https://www.tasteatlas.com/local-food-in-tubingen',
-    #        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-    #        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
-    #
-    freeze_support()
-    urls = [
-        # 'https://uni-tuebingen.de/en/',
-        'https://uni-tuebingen.de/',
-        "https://www.tripadvisor.com/Attractions-g198539-Activities-c36-Tubingen_Baden_Wurttemberg.html",
-        'https://allevents.in/tubingen/food-drinks'
-    ]
+    urls = ['https://uni-tuebingen.de/en/',
+           'https://www.tuebingen.mpg.de/en',
+           'https://www.tuebingen.de/en/',
+           'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+           'https://www.dzne.de/en/about-us/sites/tuebingen',
+           'https://www.britannica.com/place/Tubingen-Germany',
+           'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+           'https://wikitravel.org/en/T%C3%BCbingen',
+           'https://www.tasteatlas.com/local-food-in-tubingen',
+           'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+           'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+
     crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
-    print("crawling")
     crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
