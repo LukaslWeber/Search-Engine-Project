@@ -4,7 +4,7 @@ from django.http import HttpResponse
 # from tensorflow_tts.inference import TFAutoModel, AutoConfig, AutoTokenizer
 # import tensorflow as tf
 import speech_recognition as sr
-from gtts import gTTS
+from gtts.tts import gTTS
 
 #from Ranker import Ranker
 #TODO
@@ -48,12 +48,12 @@ def search(request):
                    ("https://theuselessweb.com/", "result 7 website text"),
                    ("https://theuselessweb.com/", "result 8 website text"),
                    ("https://theuselessweb.com/", "result 9 website text"),
-                   ("https://theuselessweb.com/", "result 1 website text"),
-                   ("https://theuselessweb.com/", "result 1 website text"),
-                   ("https://theuselessweb.com/", "result 1 website text"),
-                   ("https://theuselessweb.com/", "result 1 website text"),
-                   ("https://theuselessweb.com/", "result 1 website text"),
-                   ("https://theuselessweb.com/", "result 1 website text")]
+                   ("https://theuselessweb.com/", "result 10 website text"),
+                   ("https://theuselessweb.com/", "result 11 website text"),
+                   ("https://theuselessweb.com/", "result 12 website text"),
+                   ("https://theuselessweb.com/", "result 13 website text"),
+                   ("https://theuselessweb.com/", "result 14 website text"),
+                   ("https://theuselessweb.com/", "result 15 website text")]
         # Store search results and query in the session
         request.session['search_results'] = results
         request.session['query'] = query
@@ -72,38 +72,10 @@ def search(request):
     for i, result in enumerate(limited_results):
         website_text = result[1]
         tts = gTTS(text=website_text, lang="en")
-        tts.save(os.path.join("data_files", f"{i}.mp3"))
-    #     tokenizer = AutoTokenizer.from_pretrained("tensorspeech/tts-tacotron2-ljspeech-en")
-    #     input_ids = tokenizer(website_text, return_tensors="tf")["input_ids"]
-    #     audio = tacotron2.inference(input_ids, speed_ratios=[1.0])
-    #     audio_path = os.path.join("data_files", f"audio_{i}.wav")
-    #     tf.audio.write_wav(audio_path, audio[0], sample_rate=22050)
-    #     audio_files.append(audio_path)
+        audio_path = os.path.join("data_files", f"audio_file_{i}.mp3")
+        tts.save(audio_path)
+        audio_files.append(audio_path)
 
-
-    if 'text_to_speech' in request.GET:
-        # Get the index of the result to convert to speech
-        result_index = int(request.GET['text_to_speech'])
-
-        # Retrieve the website text
-        website_text = results[result_index][1]
-
-        # Instantiate the tokenizer
-        tokenizer = AutoTokenizer.from_pretrained("tensorspeech/tts-tacotron2-ljspeech-en")
-
-        # Tokenize the input text
-        input_ids = tokenizer(website_text, return_tensors="tf")["input_ids"]
-
-        # Perform text-to-speech synthesis
-        mel_outputs, _, _ = tacotron2.inference(input_ids)
-        audio = tacotron2.inference(input_ids, speed_ratios=[1.0])
-        audio_path = "data_files/audio.wav"
-        tf.audio.write_wav(audio_path, audio[0], sample_rate=22050)
-
-        with open(audio_path, 'rb') as f:
-            response = HttpResponse(f.read(), content_type='audio/wav')
-            response['Content-Disposition'] = 'attachment; filename="audio.wav"'
-            return response
 
     context = {
         'query': query,
