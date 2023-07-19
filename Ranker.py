@@ -22,7 +22,7 @@ class Ranker:
         self.results_path = results_path
         self.b = 0.75
         self.k1 = 1.2
-        self.calculate_avgdl() #TODO: calculate the average document length
+        #self.calculate_avgdl() #TODO: calculate the average document length
 
 
     def calculate_avgdl(self):
@@ -60,8 +60,8 @@ class Ranker:
         else:
             relevant_docs = self.query_union(query)
             if self.rank_method == "pseudo_relevance_feedback_embedding":
-                sorted_docs = self.BM25(query, relevant_docs)
-                sorted_docs = self.pseudo_relevance_feedback_embedding(sorted_docs)
+                sorted_docs = self.TF_IDF(query, relevant_docs)
+                sorted_docs = self.pseudo_relevance_feedback_embedding(sorted_docs, mode='distance')
             elif self.rank_method == "BM25":
                 sorted_docs = self.BM25(query, relevant_docs)
             elif self.rank_method == "TF-IDF":
@@ -71,11 +71,12 @@ class Ranker:
         #TODO return ordere list of links
 
     
-    def pseudo_relevance_feedback_embedding(self, sorted_docs:list, top_k:int=5) -> list:
+    def pseudo_relevance_feedback_embedding(self, sorted_docs:list, top_k:int=4, mode:str ="distance") -> list:
         """
         Use pseudo relevance feedback to improve the ranking
         :param sorted_docs: the list of the top k documents
         :param top_k: the number of top documents to use for the feedback
+        :param mode: the mode to use for the feedback, either distance or cosine
         :return: the list of the top k documents after the feedback
         """
         #TODO
@@ -83,12 +84,15 @@ class Ranker:
         for i in range(top_k):
             feedback.append(self.embeddings[self.id.index(sorted_docs[i][0])])
         mean_feedback = np.mean(feedback, axis=0)
-        distance = np.linalg.norm(self.embeddings - mean_feedback, axis=1)
-        relevant_indecs = np.argsort(distance)
-        sorted_docs = []
-        for i in range(self.relevant_docs_count):
-            id = relevant_indecs[i]
-            sorted_docs.append([self.id[id], distance[id]])
+        if mode == "distance":
+            distance = np.linalg.norm(self.embeddings - mean_feedback, axis=1)
+            relevant_indecs = np.argsort(distance)
+            sorted_docs = []
+            for i in range(self.relevant_docs_count):
+                id = relevant_indecs[i]
+                sorted_docs.append([self.id[id], distance[id]])
+        elif mode == "cosine":
+            sorted_docs =self.cosine_similarity(mean_feedback)
         return sorted_docs
 
 
@@ -99,8 +103,6 @@ class Ranker:
         """
         #TODO check if embedding was encoded with the some model
         embedding_index = load_index(embedding_index_path)
-        print("Embedding index loaded")
-        print(embedding_index)
         # convert the embedding index to a numpy array
         self.id = []
         embedding = []
@@ -163,6 +165,10 @@ class Ranker:
     def embedding_ranking(self,query: str) -> list:
         query = preprocessing(query)
         query_embedding = self.embedder.embed(query)
+        return self.cosine_similarity(query_embedding)
+
+
+    def cosine_similarity(self, query_embedding) -> list:
         query_norm = np.linalg.norm(query_embedding)
         embeddings_norm = np.linalg.norm(self.embeddings, axis=1)
         normalized_query = query_embedding / query_norm
@@ -172,12 +178,8 @@ class Ranker:
         sorted_docs = []
         for i in range(self.relevant_docs_count):
             id = relevant_indecs[i]
-            print(id)
-            print(self.index_db[self.id[id]][0])
-            print(cosine_similarity[id])
             sorted_docs.append([self.id[id], cosine_similarity[id]])
         return sorted_docs
-
 
     def save_results(self, results: list, query: str):
         """
@@ -264,9 +266,10 @@ if __name__ == "__main__":
     path = 'data_files_bert'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
-    index_embedding ="/home/franksim/Search-Engine-Project/data_files_bert_2/bert-base-uncased temp_embedding_index_pre.joblib" #os.path.join(path, 'bert-base-uncased_temp_embedding_index.joblib')
+    index_embedding = os.path.join(path, 'bert-base-uncased_temp_embedding_index.joblib')
     result_path = os.path.join(path, 'results')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
+    ranker.rank_method = "pseudo_relevance_feedback_embedding"
     ranker.rank("food and drinks")
     ranker.rank("tübingen attractions")
     #ranker.rank_method = "TF-IDF"
