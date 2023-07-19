@@ -168,13 +168,11 @@ class FocusedWebCrawler:
             print("getting robots content", flush=True)
             # skip urls that are disallowed in the robots.txt file
             robots_content = get_robots_content(url)
-            print(f"robots content {robots_content}")
             if not is_allowed(user_agent, url, robots_content):
                 self.visited.add(url)
                 continue
 
-            print("got robots content")
-            time.sleep(3)
+            time.sleep(0.25)
 
             print(f"Crawling page: {num_pages_crawled} with url: {url}", flush=True)
 
@@ -362,45 +360,13 @@ def get_base_url(url: str) -> str:
     return base_url
 
 
-def crawl_website(q: Queue, url: str, headers: dict, max_retries: int = 1, retry_delay: float = 2):
-    """
-    Returns a webpage which it saves in the raw_html_content string
-    :param url: The url to request
-    :param headers: Header dictionary to distinguish the crawler
-    :param max_retries: Optional, Number of maximum retries if the get request fails
-    :param retry_delay: Optional, The delay between requests if a get request fails
-    :return: raw_html_content
-    """
-    retry = urllib3.Retry(total=3, redirect=3)
-    timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
-    http = urllib3.PoolManager(retries=retry, timeout=timeout, headers=headers)
-    print("  crawling website")
-    for retry_count in range(max_retries):
-        try:
-            with http.request('GET', url, headers=headers, preload_content=False) as response:
-                raw_html_content = b""
-                for chunk in response.stream(4096):
-                    raw_html_content += chunk
-                if response.status == 200:
-                    print("  returning raw html content")
-                    break
-                else:
-                    raise Exception("Exception in GET request. The response status was not 200 OK.")
-        except Exception as e:
-            print(f"  Attempt {retry_count + 1} failed. Retrying after {retry_delay} seconds. Exception: {e}")
-            time.sleep(retry_delay)
-
-    ret = q.get()
-    ret[url] = raw_html_content
-    q.put(ret)
-    # return raw_html_content
-
-
-def get_web_content_and_urls(url: str) \
+def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float = 2) \
         -> (List[str], str, str, str) or (None, None, None, None):
     """
     Method that gets the html content of  the given URL and gives the contained header, content, footer and URLs back
     :param url: URL of the website that should be retrieved
+    :param max_retries: Optional, Number of maximum retries if the get request fails
+    :param retry_delay: Optional, The delay between requests if a get request fails
     :return (links:List[str], header_content:str, body_content:str, footer_content:str)
     """
     # handling failed requests
@@ -408,37 +374,37 @@ def get_web_content_and_urls(url: str) \
     raw_html_content = b""
     for idx, user_agent in enumerate(user_agent_list):
         if raw_html_content == b"":
-            print(f"trying user agent {idx}")
-            print(user_agent)
+            print(f"Trying user agent identity {idx}")
+            retry = urllib3.Retry(total=3, redirect=3)
+            timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
             headers = {
-                'Host': get_base_url(url),
                 'User-Agent': user_agent,
                 'Accept-Language': '*'
             }
-            q = Queue()
-            ret = {url: None}
-            q.put(ret)
-            process = multiprocessing.Process(target=crawl_website, args=(q, url, headers))
-            process.start()
-            # Wait for 10 seconds to timeout
-            process.join(10)
-
-            # if it is still active
-            if process.is_alive():
-                print("  trying to kill process")
-                process.terminate()
-                process.kill()
-                process.join()
-                print(f" Process with User-Agent '{user_agent}' terminated due to timeout.")
-            else:
-                print(f" Process with User-Agent '{user_agent}' completed successfully.")
-                raw_html_content = q.get()[url]
-                print(raw_html_content, flush=True)
-                break
+            http = urllib3.PoolManager(retries=retry, timeout=timeout, headers=headers)
+            print("  crawling website")
+            for retry_count in range(max_retries):
+                try:
+                    with http.request('GET', url, headers=headers, preload_content=False) as response:
+                        raw_html_content = b""
+                        for chunk in response.stream(4096):
+                            raw_html_content += chunk
+                        print("response status is:" + str(response.status))
+                        if response.status == 200:
+                            break
+                        else:
+                            raw_html_content = b""
+                            raise Exception("Exception in GET request. The response status was not 200 OK.")
+                except Exception as e:
+                    error_str = f"Attempt {retry_count + 1} failed. "
+                    if retry_count > 1:
+                        error_str += "Retrying after {retry_delay} seconds.\n "
+                    error_str += f"Exception: {e}"
+                    print(error_str)
+                    time.sleep(retry_delay)
 
     print(" doing further processing")
-    if raw_html_content != b"" or raw_html_content is not None:
-        print(raw_html_content)
+    if raw_html_content != "" or raw_html_content != b"" or raw_html_content is not None:
         # Decode the retrieved html web page
         html_content = raw_html_content.decode('utf-8', 'ignore')
         # Create a BeautifulSoup object to parse the HTML content
