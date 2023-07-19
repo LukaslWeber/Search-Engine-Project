@@ -5,7 +5,7 @@ import re
 import tempfile
 import time
 import timeit
-from multiprocessing import freeze_support
+from multiprocessing import freeze_support, Queue
 
 from PriorityQueue import PriorityQueue
 from typing import List
@@ -27,22 +27,23 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
     save_index
 from fake_useragent import UserAgent
 
+ua = UserAgent()
 user_agent_list = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1',
-            'Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1)',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18363',
-            'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
-            'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16.2',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'
-            'Mozilla/5.0 (Linux; U; Android 4.0.3; ko-kr; LG-L160L Build/IML74K) AppleWebkit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30',
-            UserAgent.random,
-            UserAgent.googlechrome,
-            UserAgent.edge
-        ]
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1',
+    'Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1)',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18363',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+    'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16.2',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'
+    'Mozilla/5.0 (Linux; U; Android 4.0.3; ko-kr; LG-L160L Build/IML74K) AppleWebkit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30',
+    ua.random,
+    ua.googlechrome,
+    ua.edge
+]
 
 
 def has_tuebingen(string_to_check: str) -> bool:
@@ -56,7 +57,8 @@ def has_tuebingen(string_to_check: str) -> bool:
     tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
     tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
 
-    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(string_to_check) or tuebingen_reg.search(string_to_check):
+    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(
+            string_to_check) or tuebingen_reg.search(string_to_check):
         return True
 
     return False
@@ -72,10 +74,9 @@ def has_tuebingen_content(string_to_check: str) -> bool:
     pattern = r'(t(?:ü|ue|u)?binge[nr])'
     matches = re.findall(pattern, string_to_check, re.IGNORECASE)
 
-    pattern_location = re.compile( r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
+    pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
 
-
-    if len(matches)> 4 or pattern_location.search(string_to_check):
+    if len(matches) > 4 or pattern_location.search(string_to_check):
         return True
     else:
         return False
@@ -135,7 +136,7 @@ class FocusedWebCrawler:
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         # self.identifier.set_languages(['de', 'en', 'fr'])
-        #store hashvalues of already indexed pages for duplicate detection
+        # store hashvalues of already indexed pages for duplicate detection
         self.hashvalues = {}
 
     def crawl(self, frontier: PriorityQueue, index_db):
@@ -148,7 +149,7 @@ class FocusedWebCrawler:
         if index_db == {}:
             num_pages_crawled = 0
         else:
-            num_pages_crawled= max(index_db.keys()) + 1
+            num_pages_crawled = max(index_db.keys()) + 1
 
         user_agent = get_user_agent()
         # initialize priority queue and add seed urls
@@ -160,11 +161,16 @@ class FocusedWebCrawler:
             if url in self.visited:
                 continue
 
-            #skip urls that are disallowed in the robots.txt file
+            print("getting robots content", flush=True)
+            # skip urls that are disallowed in the robots.txt file
             robots_content = get_robots_content(url)
+            print(f"robots content {robots_content}")
             if not is_allowed(user_agent, url, robots_content):
                 self.visited.add(url)
                 continue
+
+            print("got robots content")
+            time.sleep(3)
 
             print(f"Crawling page: {num_pages_crawled} with url: {url}", flush=True)
 
@@ -172,8 +178,8 @@ class FocusedWebCrawler:
             start = timeit.default_timer()
             page_links, page_header, page_content, page_footer = get_web_content_and_urls(url)
             print(f" getting content and urls took: {timeit.default_timer() - start:.2f}")
-            #print(f" Page content: {page_content}")
-            #print(f" Page links: {page_links}")
+            # print(f" Page content: {page_content}")
+            # print(f" Page links: {page_links}")
 
             # skip empty pages
             if page_links is None and page_content is None:
@@ -181,7 +187,8 @@ class FocusedWebCrawler:
                 continue
 
             # Check if "Tübingen" or "Tuebingen" is contained somewhere in the URL or document
-            contains_tuebingen = has_tuebingen(url) or has_tuebingen_content(" ".join([page_header,page_content,page_footer]))
+            contains_tuebingen = has_tuebingen(url) or has_tuebingen_content(
+                " ".join([page_header, page_content, page_footer]))
             start = timeit.default_timer()
             page_language = self.detect_language(page_content)
             print(f" Detecting language took: {timeit.default_timer() - start:.2f}s")
@@ -202,28 +209,27 @@ class FocusedWebCrawler:
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
                 if not (link in self.visited):
-                  if is_valid_url(link):
-                      frontier.put((page_priority, link))
-                  else:
-                    print(f"An invalid URL has been found and could not be added to the frontier: {link}")
+                    if is_valid_url(link):
+                        frontier.put((page_priority, link))
+                    else:
+                        print(f"An invalid URL has been found and could not be added to the frontier: {link}")
                 else:
                     print(f"The URL has already been visited. Skipping:{link}")
             # Add the URL and page content to the index
 
-            #duplicate detection
+            # duplicate detection
             if is_duplicate(page_content, self.hashvalues):
                 continue
 
             # Add the URL and page content to the index
-            if page_priority == 1: #save only english pages with tübingen content
-                self.index_embeddings(page_content, num_pages_crawled, pre = False)
+            if page_priority == 1:  # save only english pages with tübingen content
+                self.index_embeddings(page_content, num_pages_crawled, pre=False)
                 preprocessed_page_content = preprocessing(page_content)
-                #self.index_embeddings(preprocessed_page_content, num_pages_crawled)
+                # self.index_embeddings(preprocessed_page_content, num_pages_crawled)
                 self.inverted_index(preprocessed_page_content, num_pages_crawled)
                 self.index(url, num_pages_crawled, page_content)
 
-            self.hashvalues[url]=compute_similarity_hash(page_content)
-
+            self.hashvalues[url] = compute_similarity_hash(page_content)
 
             # Save everything to files after every 25 documents and at the end of crawling
             if num_pages_crawled % 25 == 0 or num_pages_crawled == self.max_pages:
@@ -231,8 +237,8 @@ class FocusedWebCrawler:
                     # Use temporary files for saving
                     temp_index_path = "temp_forward_index.joblib"
                     temp_inverted_index_path = "temp_inverted_index.joblib"
-                    temp_embedding_index_path =  self.embedder.model_name +" temp_embedding_index.joblib"
-                    temp_embedding_index_path_pre =  self.embedder.model_name +" temp_embedding_index_pre.joblib"
+                    temp_embedding_index_path = self.embedder.model_name + " temp_embedding_index.joblib"
+                    temp_embedding_index_path_pre = self.embedder.model_name + " temp_embedding_index_pre.joblib"
                     temp_visited_path = "temp_visited_pages.json"
                     temp_frontier_path = "temp_frontier_pages.joblib"
 
@@ -275,9 +281,7 @@ class FocusedWebCrawler:
         length = len(content.split())
         self.index_db[key] = (url, length)
 
-
-
-    def index_embeddings(self,doc: str, key, pre = True) -> None:
+    def index_embeddings(self, doc: str, key, pre=True) -> None:
         """
         Add a document embedding to the embedding index
         :param doc: The document to be indexed already preprocessed
@@ -289,7 +293,7 @@ class FocusedWebCrawler:
         else:
             self.index_embeddings_db[key] = self.embedder.embed(doc)
 
-    def inverted_index(self,  doc:str, key) -> None:
+    def inverted_index(self, doc: str, key) -> None:
         """
         Add a document to the inverted index. You need (at least) two parameters:
         :param doc: The document to be indexed already preprocessed
@@ -310,7 +314,7 @@ class FocusedWebCrawler:
                 if not found:
                     self.inverted_index_db[term].append([key, [position]])
 
-    def detect_language(self, text: str) -> str:
+    def detect_language(self, text: str) -> str or None:
         """
         Method that detects the language that was used in a document to prevent German and documents of other
         languages to get into our index
@@ -331,6 +335,7 @@ class FocusedWebCrawler:
         except Exception as e:
             print(f"Some error occured during language detection of the string: {str(e)}")
             return None
+
 
 # checks if given url is valid (considered valid if host and port components are present)
 def is_valid_url(url) -> bool:
@@ -353,69 +358,80 @@ def get_base_url(url: str) -> str:
     return base_url
 
 
-def crawl_website(url: str, headers:dict, max_retries: int=1, retry_delay:float=2):
+def crawl_website(q: Queue, url: str, headers: dict, max_retries: int = 1, retry_delay: float = 2):
     """
-    Returns a webpage
-    :param url:
-    :param headers:
-    :param max_retries:
-    :param retry_delay:
-    :return:
+    Returns a webpage which it saves in the raw_html_content string
+    :param url: The url to request
+    :param headers: Header dictionary to distinguish the crawler
+    :param max_retries: Optional, Number of maximum retries if the get request fails
+    :param retry_delay: Optional, The delay between requests if a get request fails
+    :return: raw_html_content
     """
     retry = urllib3.Retry(total=3, redirect=3)
     timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
     http = urllib3.PoolManager(retries=retry, timeout=timeout, headers=headers)
-
-    raw_html_content = ""
+    print("  crawling website")
     for retry_count in range(max_retries):
         try:
             with http.request('GET', url, headers=headers, preload_content=False) as response:
                 raw_html_content = b""
                 for chunk in response.stream(4096):
                     raw_html_content += chunk
+            print("  returning raw html content")
             break
         except Exception as e:
-            print(f"Attempt {retry_count + 1} failed. Retrying after {retry_delay} seconds. Exception: {e}")
+            print(f"  Attempt {retry_count + 1} failed. Retrying after {retry_delay} seconds. Exception: {e}")
             time.sleep(retry_delay)
 
-    return raw_html_content
+    ret = q.get()
+    ret[url] = raw_html_content
+    q.put(ret)
+    # return raw_html_content
 
-def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float = 2) \
+
+def get_web_content_and_urls(url: str) \
         -> (List[str], str, str, str) or (None, None, None, None):
     """
-    Method that sends a http request with the given URL and gives the contained content and URLs back
-    :param max_retries: Optional, Number of maximum retries if the get request fails
-    :param retry_delay: Optional, The delay between requests if a get request fails
+    Method that gets the html content of  the given URL and gives the contained header, content, footer and URLs back
     :param url: URL of the website that should be retrieved
+    :return (links:List[str], header_content:str, body_content:str, footer_content:str)
     """
     # handling failed requests
 
-    raw_html_content = ""
-    for user_agent in user_agent_list:
-        print("trying user agent " + user_agent)
-        headers = {
-            'Host': get_base_url(url),
-            'User-Agent': user_agent,
-            'Referer': 'https://www.google.com/',
-            'Accept-Language': '*'
-        }
-        result_queue = multiprocessing.Queue()
-        process = multiprocessing.Process(target=crawl_website, args=(url, headers, max_retries, retry_delay))
-        process.start()
+    raw_html_content = b""
+    for idx, user_agent in enumerate(user_agent_list):
+        if raw_html_content == b"":
+            print(f"trying user agent {idx}")
+            print(user_agent)
+            headers = {
+                'Host': get_base_url(url),
+                'User-Agent': user_agent,
+                'Accept-Language': '*'
+            }
+            q = Queue()
+            ret = {url: None}
+            q.put(ret)
+            process = multiprocessing.Process(target=crawl_website, args=(q, url, headers))
+            process.start()
+            # Wait for 10 seconds to timeout
+            process.join(10)
 
-        process.join(timeout=10.0)
+            # if it is still active
+            if process.is_alive():
+                print("  trying to kill process")
+                process.terminate()
+                process.kill()
+                process.join()
+                print(f" Process with User-Agent '{user_agent}' terminated due to timeout.")
+            else:
+                print(f" Process with User-Agent '{user_agent}' completed successfully.")
+                raw_html_content = q.get()[url]
+                print(raw_html_content, flush=True)
+                break
 
-        if process.is_alive():
-            process.terminate()
-            process.join()
-            print(f"Process with User-Agent '{user_agent}' terminated due to timeout.")
-        else:
-            print(f"Process with User-Agent '{user_agent}' completed successfully.")
-            raw_html_content = result_queue.get()
-            break
-
-    print("taking parts of html now")
-    if raw_html_content != "":
+    print(" doing further processing")
+    if raw_html_content != b"" or raw_html_content is not None:
+        print(raw_html_content)
         # Decode the retrieved html web page
         html_content = raw_html_content.decode('utf-8', 'ignore')
         # Create a BeautifulSoup object to parse the HTML content
@@ -469,6 +485,7 @@ def get_absolute_links(url: str, links: List[str]) -> List[str]:
             absolute_links.add(absolute_link)
     return list(absolute_links)
 
+
 def get_robots_content(url: str) -> str:
     """
     Method that returns content of the robots.txt file for a given URL
@@ -477,11 +494,12 @@ def get_robots_content(url: str) -> str:
     """
     root_url = get_base_url(url)
     robots_url = root_url + "/robots.txt"
-
-    http = urllib3.PoolManager()
+    retry = urllib3.Retry(total=3, redirect=3)
+    timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
+    http = urllib3.PoolManager(retries=retry, timeout=timeout)
 
     try:
-        response = http.request('GET', robots_url)
+        response = http.request('GET', robots_url, preload_content=False)
         try:
             content = response.data.decode('utf-8')
         except UnicodeDecodeError:
@@ -491,15 +509,18 @@ def get_robots_content(url: str) -> str:
         print(f"HTTP error occurred while retrieving robots.txt: {str(e)}")
     except urllib3.exceptions.NewConnectionError as e:
         print(f"URL error occurred while retrieving robots.txt: {str(e)}")
+    except Exception as e:
+        print(f"Another error occured while retrieving robots.txt: {str(e)}")
 
     return ""
 
-def get_user_agent() -> str:
+
+def get_user_agent() -> None or str:
     """
     method that returns the current user agent
     """
     try:
-        response = requests.get('https://httpbin.org/user-agent')
+        response = requests.get('https://httpbin.org/user-agent', timeout=5.0)
         response_json = response.json()
         user_agent = response_json.get('user-agent')
         return user_agent
@@ -517,7 +538,7 @@ def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
     :return: False if crawling the url is disallowed in robots, True otherwise
     """
     path = urlparse(url).path
-    #save rules relevant for the current user agent
+    # save rules relevant for the current user agent
     user_agent_rules = []
     current_user_agent = None
     for line in robots_content.splitlines():
@@ -525,15 +546,16 @@ def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
             current_user_agent = line.split(":")[1].strip()
         elif line.lower().startswith("disallow") and (current_user_agent == user_agent or current_user_agent == "*"):
             disallowed_path = line.split(":")[1].strip()
-            #append relevant rules
+            # append relevant rules
             user_agent_rules.append(disallowed_path)
 
-    #check if the provided path is allowed
+    # check if the provided path is allowed
     for rule in user_agent_rules:
         if path.startswith(rule):
             print(f"disallowed url detected: {path}")
             return False
     return True
+
 
 def compute_similarity_hash(page_content: str, k: int = 5) -> str:
     """
@@ -545,11 +567,11 @@ def compute_similarity_hash(page_content: str, k: int = 5) -> str:
     hash_value = Simhash(page_content).value
     similarity_hash = hash_value >> k
     binary_hash = format(similarity_hash, '064b')
-    
-    return binary_hash
-    
 
-def is_duplicate(content: str, previous_hashes , k: int = 5):
+    return binary_hash
+
+
+def is_duplicate(content: str, previous_hashes, k: int = 5):
     """
     Method that checks a document against an existing collection of previsouly seen documents for near duplicates
     :param content: page content of the current page
@@ -560,11 +582,13 @@ def is_duplicate(content: str, previous_hashes , k: int = 5):
     current_hash = compute_similarity_hash(content)
 
     for hash in previous_hashes:
-        bit_difference = np.sum(np.abs(np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash]])))
+        bit_difference = np.sum(np.abs(
+            np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash]])))
         if bit_difference <= k:
             return True
-    
+
     return False
+
 
 # _______________ OLD UNUSED METHODS __________________-
 """
@@ -664,7 +688,7 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 # -----------------------------
 # just testing
 if __name__ == '__main__':
-    #urls = ['https://uni-tuebingen.de/en/',
+    # urls = ['https://uni-tuebingen.de/en/',
     #        'https://www.tuebingen.mpg.de/en',
     #        'https://www.tuebingen.de/en/',
     #        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
@@ -678,7 +702,7 @@ if __name__ == '__main__':
     #
     freeze_support()
     urls = [
-        'https://uni-tuebingen.de/en/',
+        # 'https://uni-tuebingen.de/en/',
         'https://uni-tuebingen.de/',
         "https://www.tripadvisor.com/Attractions-g198539-Activities-c36-Tubingen_Baden_Wurttemberg.html",
         'https://allevents.in/tubingen/food-drinks'
@@ -686,6 +710,3 @@ if __name__ == '__main__':
     crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
     print("crawling")
     crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
-
-
-
