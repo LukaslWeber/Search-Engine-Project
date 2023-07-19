@@ -69,12 +69,16 @@ def search(request):
     show_previous = start_index >= results_per_page
     remaining_elements = len(results) - (start_index + results_per_page)
     audio_files = []
+    audio_dir = "media"
+    for f in os.listdir(audio_dir):
+        os.remove(os.path.join(audio_dir,f))
     for i, result in enumerate(limited_results):
         website_text = result[1]
-        tts = gTTS(text=website_text, lang="en")
-        audio_path = os.path.join("data_files", f"audio_file_{i}.mp3")
+        tts = gTTS(text=website_text + "from_query" + query, lang="en")
+        audio_file_name = f"{query}_audio_file_{i}.mp3"
+        audio_path = os.path.join("media", audio_file_name)
         tts.save(audio_path)
-        audio_files.append(audio_path)
+        audio_files.append(audio_file_name)
 
 
     context = {
