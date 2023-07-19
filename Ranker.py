@@ -59,15 +59,39 @@ class Ranker:
             sorted_docs = self.embedding_ranking(query)
         else:
             relevant_docs = self.query_union(query)
-            if self.rank_method == "BM25":
+            if self.rank_method == "pseudo_relevance_feedback_embedding":
                 sorted_docs = self.BM25(query, relevant_docs)
-            if self.rank_method == "TF-IDF":
+                sorted_docs = self.pseudo_relevance_feedback_embedding(sorted_docs)
+            elif self.rank_method == "BM25":
+                sorted_docs = self.BM25(query, relevant_docs)
+            elif self.rank_method == "TF-IDF":
                 sorted_docs = self.TF_IDF(query, relevant_docs)
         self.save_results(sorted_docs, query)
         return [self.index_db[result[0]][0] for result in sorted_docs]
         #TODO return ordere list of links
 
     
+    def pseudo_relevance_feedback_embedding(self, sorted_docs:list, top_k:int=5) -> list:
+        """
+        Use pseudo relevance feedback to improve the ranking
+        :param sorted_docs: the list of the top k documents
+        :param top_k: the number of top documents to use for the feedback
+        :return: the list of the top k documents after the feedback
+        """
+        #TODO
+        feedback = []
+        for i in range(top_k):
+            feedback.append(self.embeddings[self.id.index(sorted_docs[i][0])])
+        mean_feedback = np.mean(feedback, axis=0)
+        distance = np.linalg.norm(self.embeddings - mean_feedback, axis=1)
+        relevant_indecs = np.argsort(distance)
+        sorted_docs = []
+        for i in range(self.relevant_docs_count):
+            id = relevant_indecs[i]
+            sorted_docs.append([self.id[id], distance[id]])
+        return sorted_docs
+
+
     def load_embedding_index(self, embedding_index_path: str):
         """
         Load the embedding index
@@ -237,7 +261,7 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'data_files_bert_2'
+    path = 'data_files_bert'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
     index_embedding ="/home/franksim/Search-Engine-Project/data_files_bert_2/bert-base-uncased temp_embedding_index_pre.joblib" #os.path.join(path, 'bert-base-uncased_temp_embedding_index.joblib')
