@@ -32,7 +32,7 @@ from fake_useragent import UserAgent
 
 ua = UserAgent()
 user_agent_list = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0'
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18363',
@@ -510,6 +510,7 @@ def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
     :param robots_content: content of the current robots.txt file
     :return: False if crawling the url is disallowed in robots, True otherwise
     """
+    # get the path of the url without base url ('http://www.example.com/hithere/something/else' -> /hithere/something/else)
     path = urlparse(url).path
     # save rules relevant for the current user agent
     user_agent_rules = []
@@ -519,15 +520,19 @@ def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
             current_user_agent = line.split(":")[1].strip()
         elif line.lower().startswith("disallow") and (current_user_agent == user_agent or current_user_agent == "*"):
             disallowed_path = line.split(":")[1].strip()
+            if path.startswith(disallowed_path):
+                print(f"disallowed url detected: {path}")
+                return False
             # append relevant rules
-            user_agent_rules.append(disallowed_path)
+            # user_agent_rules.append(disallowed_path)
+    return True
 
     # check if the provided path is allowed
-    for rule in user_agent_rules:
-        if path.startswith(rule):
-            print(f"disallowed url detected: {path}")
-            return False
-    return True
+    # for rule in user_agent_rules:
+    #     if path.startswith(rule):
+    #         print(f"disallowed url detected: {path}")
+    #         return False
+    # return True
 
 
 def compute_similarity_hash(page_content: str, k: int = 5) -> str:
