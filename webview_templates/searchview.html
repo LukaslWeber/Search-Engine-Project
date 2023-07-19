@@ -56,6 +56,8 @@
                     <div class="column is-full">
                         <div class="box has-background-grey-dark has-text-light has-border">
                             <p>{{ search_results.0.1 }}</p>
+                            <p>Link: <a href="{{ search_results.0.0 }}">{{ search_results.0.0 }}</a></p>
+                            <button class="read-button" data-text="{{ search_results.0.1 }}">Read</button>
                         </div>
                     </div>
                 {% endif %}
@@ -66,6 +68,8 @@
                     <div class="column is-half">
                         <div class="box has-background-grey-dark has-text-light has-border">
                             <p>{{ result.1 }}</p>
+                            <p>Link: <a href="{{ result.0 }}">{{ result.0 }}</a></p>
+                            <button class="read-button" data-text="{{ result.1 }}">Read</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -87,5 +91,42 @@
                 </form>
             {% endif %}
         </div>
+
+    {% for audio_file in audio_files %}
+        <audio src="{{ audio_file }}" id="audio{{ forloop.counter }}" preload="auto"></audio>
+    {% endfor %}
+
+    <script>
+        {#document.addEventListener('DOMContentLoaded', function() {#}
+        {#    var speechSynthesis = window.speechSynthesis;#}
+        {#    var utterance = new SpeechSynthesisUtterance();#}
+        {##}
+        {#    utterance.voice = speechSynthesis.getVoices()[0];#}
+        {#    utterance.rate = 1;#}
+        {##}
+        {#    // Attach click event listeners to read buttons#}
+        {#    var readButtons = document.getElementsByClassName('read-button');#}
+        {#    Array.from(readButtons).forEach(function(button) {#}
+        {#        button.addEventListener('click', function() {#}
+        {#            var websiteText = this.getAttribute('data-text');#}
+        {#            utterance.text = websiteText;#}
+        {#            speechSynthesis.speak(utterance);#}
+        {#        });#}
+        {#    });#}
+        {# }); #}
+        document.addEventListener('DOMContentLoaded', function() {
+            var audioElements = document.querySelectorAll('audio');
+
+            var playButtons = document.getElementsByClassName('play-button');
+            Array.from(playButtons).forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var resultIndex = parseInt(this.getAttribute('data-index'));
+                    var audioElement = audioElements[resultIndex];
+                    audioElement.play();
+                });
+            });
+        });
+    </script>
+
     </section>
 {% endblock %}
