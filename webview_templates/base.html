@@ -50,7 +50,6 @@
                 box-shadow: 0 0 0 0.5px var(--orange); /* Orange */
             }
 
-
             .input {
                 background-color: var(--middle-grey); /* Darker Grey */
                 color: var(--white-smoke); /* Light Grey */
@@ -65,6 +64,12 @@
                 display:flex;
                 justify-content: flex-end;
             }
+
+            .columns{
+                display:flex;
+                align-items: center;
+            }
+
 
 
             .input::placeholder {
@@ -142,13 +147,39 @@
             padding: 6px;
         }
 
-        .audio-player select.option:focus{
+        .audio-player select.option:hover{
             color: var(--orange);
         }
 
         /* Change speed option background color when hovered */
         .audio-player option:hover{
             color: var(--orange);
+        }
+
+        /* Adjust the width of the .ranker-kind select to fit properly */
+        .select select {
+                background-color: var(--turquoise);
+                color: var(--white-smoke);
+                border: 0;
+                border-radius: 0;
+                padding: 6px;
+                margin-left: 4.5px;
+            }
+
+        .select select:hover{
+            background-color: var(--orange);
+        }
+        .select select:focus{
+            background-color: var(--turquoise);
+            color: var(--white-smoke);
+            border-color: var(--orange);
+            box-shadow: 0 0 0 0.5px var(--orange);
+        }
+        .select select.option:focus{
+            color: var(--orange);
+        }
+        .select option:hover{
+            color: var(--orange)
         }
 
         {#/* Adjust the width of the audio-player to fit within the container */#}

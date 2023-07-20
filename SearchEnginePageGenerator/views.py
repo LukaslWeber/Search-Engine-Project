@@ -3,7 +3,8 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from gtts.tts import gTTS
 
-lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+# lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+lorem_ipsum = ""
 #from Ranker import Ranker
 #TODO
 # path = 'data_files'
@@ -68,10 +69,10 @@ def search(request):
         os.remove(os.path.join(audio_dir,f))
     for i, result in enumerate(limited_results):
         website_text = result[2]
-        tts = gTTS(text=website_text + "from_query" + query, lang="en")
+        # tts = gTTS(text=website_text + "from_query" + query, lang="en")
         audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
-        audio_path = os.path.join("media", audio_file_name)
-        tts.save(audio_path)
+        # audio_path = os.path.join("media", audio_file_name)
+        # tts.save(audio_path)
         audio_files.append(audio_file_name)
 
 
