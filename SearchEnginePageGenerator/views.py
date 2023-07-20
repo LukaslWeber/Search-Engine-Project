@@ -75,7 +75,7 @@ def search(request):
     for i, result in enumerate(limited_results):
         website_text = result[1]
         tts = gTTS(text=website_text + "from_query" + query, lang="en")
-        audio_file_name = f"{query}_audio_file_{i}.mp3"
+        audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
         audio_path = os.path.join("media", audio_file_name)
         tts.save(audio_path)
         audio_files.append(audio_file_name)
