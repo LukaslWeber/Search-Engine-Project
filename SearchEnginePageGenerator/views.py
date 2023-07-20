@@ -1,11 +1,9 @@
 import os
 from django.shortcuts import render
 from django.http import HttpResponse
-# from tensorflow_tts.inference import TFAutoModel, AutoConfig, AutoTokenizer
-# import tensorflow as tf
-import speech_recognition as sr
 from gtts.tts import gTTS
 
+lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 #from Ranker import Ranker
 #TODO
 # path = 'data_files'
@@ -13,10 +11,6 @@ from gtts.tts import gTTS
 # index_inverted = os.path.join(path, 'inverted_index.joblib')
 # index_embedding = os.path.join(path, 'embedding_index.joblib')
 # ranker = Ranker(index, index_inverted, index_embedding)
-
-# # Instantiate the Tacotron 2 model
-# tacotron2_config = AutoConfig.from_pretrained("tensorspeech/tts-tacotron2-ljspeech-en")
-# tacotron2 = TFAutoModel.from_pretrained("tensorspeech/tts-tacotron2-ljspeech-en", config=tacotron2_config)
 
 
 # Create your views here.
@@ -39,21 +33,21 @@ def search(request):
     if 'search_results' not in request.session:
         print("Generating results")
         # TODO: results = ranker.rank(query, )
-        results = [("https://theuselessweb.com/", "result 1 website text"),
-                   ("https://theuselessweb.com/", "result 2 website text"),
-                   ("https://theuselessweb.com/", "result 3 website text"),
-                   ("https://theuselessweb.com/", "result 4 website text"),
-                   ("https://theuselessweb.com/", "result 5 website text"),
-                   ("https://theuselessweb.com/", "result 6 website text"),
-                   ("https://theuselessweb.com/", "result 7 website text"),
-                   ("https://theuselessweb.com/", "result 8 website text"),
-                   ("https://theuselessweb.com/", "result 9 website text"),
-                   ("https://theuselessweb.com/", "result 10 website text"),
-                   ("https://theuselessweb.com/", "result 11 website text"),
-                   ("https://theuselessweb.com/", "result 12 website text"),
-                   ("https://theuselessweb.com/", "result 13 website text"),
-                   ("https://theuselessweb.com/", "result 14 website text"),
-                   ("https://theuselessweb.com/", "result 15 website text")]
+        results = [("https://theuselessweb.com/", "title", "result 1 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 2 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 3 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 4 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 5 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 6 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 7 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 8 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 9 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 10 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 11 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 12 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 13 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 14 website text" + lorem_ipsum),
+                   ("https://theuselessweb.com/", "title", "result 15 website text" + lorem_ipsum)]
         # Store search results and query in the session
         request.session['search_results'] = results
         request.session['query'] = query
@@ -73,7 +67,7 @@ def search(request):
     for f in os.listdir(audio_dir):
         os.remove(os.path.join(audio_dir,f))
     for i, result in enumerate(limited_results):
-        website_text = result[1]
+        website_text = result[2]
         tts = gTTS(text=website_text + "from_query" + query, lang="en")
         audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
         audio_path = os.path.join("media", audio_file_name)
