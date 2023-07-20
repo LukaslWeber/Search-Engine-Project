@@ -3,40 +3,163 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
         <style>
+            :root{
+                --turquoise:#266D7A;
+                --white-smoke:#F5F5F5;
+                --orange:#FF9944;
+                {#--light-grey:;#}
+                --middle-grey:#525252;
+                --dark-grey:#363636;
+                --placeholder-text-color:#ADADAD;
+            }
             body {
-                background-color: #363636;
-                color: #F5F5F5;
+                background-color: var(--dark-grey);
+                color: var(--white-smoke);
             }
 
             .title, .label, .subtitle {
-                color: #F5F5F5;
+                color: var(--white-smoke);
+            }
+            .website-title{
+                font-size: 24px;
+            }
+
+            a {
+                color: var(--placeholder-text-color);
+            }
+
+            .subtitle.is-6{
+                font-weight: bold;
+            }
+
+            .logo_image_div {
+                align-content: baseline;
             }
 
             .button.is-info, .button.is-link {
-                background-color: #266D7A; /* Turquoise */
+                background-color: var(--turquoise); /* Turquoise */
             }
 
             .button.is-info:hover, .button.is-link:hover {
-                background-color: #FF9944; /*
+                background-color: var(--orange); /*
                  Orange */
             }
 
             .input:focus {
-                border-color: #FF9944; /* Orange */
-                box-shadow: 0 0 0 0.5px #FF9944; /* Orange */
+                border-color: var(--orange); /* Orange */
+                box-shadow: 0 0 0 0.5px var(--orange); /* Orange */
             }
 
 
             .input {
-                background-color: #525252; /* Darker Grey */
-
-
-        color: #F5F5F5; /* Light Grey */
+                background-color: var(--middle-grey); /* Darker Grey */
+                color: var(--white-smoke); /* Light Grey */
             }
+
+            .input.is-expanded-field {
+                width: 500px;
+                overflow: scroll;
+            }
+
+            .dropdown-container{
+                display:flex;
+                justify-content: flex-end;
+            }
+
 
             .input::placeholder {
-                color: #ADADAD; /* Placeholder Text Color */
+                color: var(--placeholder-text-color); /* Placeholder Text Color */
             }
+
+            .dropdown-content{
+                background-color: var(--dark-grey);
+            }
+
+            .dropdown-content select{
+                background-color: var(--turquoise);
+                color: var(--white-smoke);
+                border: 1px solid var(--dark-grey);
+                border-radius: 4px;
+                padding: 6px;
+            }
+            .dropdown-content select:hover{
+                background-color: var(--orange);
+            }
+
+            .dropdown-content select:focus{
+                background-color: var(--turquoise);
+                color: var(--white-smoke);
+                border: 1px solid var(--dark-grey);
+                border-color: var(--orange);
+                box-shadow: 0 0 0 0.5px var(--orange);
+                border-radius: 4px;
+                padding: 6px;
+            }
+
+            .dropdown-content select.option:focus{
+                color: var(--orange);
+            }
+
+            /* Change speed option background color when hovered */
+            .dropdown-content option:hover{
+                color: var(--orange);
+            }
+
+
+        /* Additional styles for the audio player */
+        .audio-player {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .audio-player label {
+            margin-left: 20px;
+            margin-right: 10px;
+            font-weight: bold;
+            color: var(--white-smoke);
+        }
+
+        .audio-player select {
+            background-color: var(--turquoise);
+            color: var(--white-smoke);
+            border: 1px solid var(--dark-grey);
+            border-radius: 4px;
+            padding: 6px;
+        }
+        .audio-player select:hover{
+            background-color: var(--orange);
+        }
+
+        .audio-player select:focus{
+            background-color: var(--turquoise);
+            color: var(--white-smoke);
+            border: 1px solid var(--dark-grey);
+            border-color: var(--orange);
+            box-shadow: 0 0 0 0.5px var(--orange);
+            border-radius: 4px;
+            padding: 6px;
+        }
+
+        .audio-player select.option:focus{
+            color: var(--orange);
+        }
+
+        /* Change speed option background color when hovered */
+        .audio-player option:hover{
+            color: var(--orange);
+        }
+
+        {#/* Adjust the width of the audio-player to fit within the container */#}
+        {#.audio-player audio,#}
+        {#.audio-player label,#}
+        {#.audio-player select {#}
+        {#    margin: 1px; /* Add some spacing between elements */#}
+        {# } #}
+
+
+
 
         </style>
     </head>
