@@ -22,7 +22,7 @@ class Ranker:
         self.results_path = results_path
         self.b = 0.75
         self.k1 = 1.2
-        #self.calculate_avgdl() #TODO: calculate the average document length
+        self.calculate_avgdl() #TODO: calculate the average document length
 
 
     def calculate_avgdl(self):
@@ -60,8 +60,11 @@ class Ranker:
         else:
             relevant_docs = self.query_union(query)
             if self.rank_method == "pseudo_relevance_feedback_embedding":
-                sorted_docs = self.TF_IDF(query, relevant_docs)
-                sorted_docs = self.pseudo_relevance_feedback_embedding(sorted_docs, mode='distance')
+                sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)[:5]
+                sorted_docs_BM25 = self.BM25(query, relevant_docs)[:5]
+                sorted_docs_tf_idf.extend(sorted_docs_BM25)
+                print(sorted_docs_tf_idf)
+                sorted_docs = self.pseudo_relevance_feedback_embedding(sorted_docs_tf_idf, mode='distance')
             elif self.rank_method == "BM25":
                 sorted_docs = self.BM25(query, relevant_docs)
             elif self.rank_method == "TF-IDF":
@@ -81,8 +84,8 @@ class Ranker:
         """
         #TODO
         feedback = []
-        for i in range(top_k):
-            feedback.append(self.embeddings[self.id.index(sorted_docs[i][0])])
+        for sorted_doc in sorted_docs:
+            feedback.append(self.embeddings[self.id.index(sorted_doc[0])])
         mean_feedback = np.mean(feedback, axis=0)
         if mode == "distance":
             distance = np.linalg.norm(self.embeddings - mean_feedback, axis=1)
@@ -263,15 +266,24 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'data_files_bert'
+    path = 'data_files_bert_3'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
-    index_embedding = os.path.join(path, 'bert-base-uncased_temp_embedding_index.joblib')
+    index_embedding = os.path.join(path, 'embedding_index.joblib')
     result_path = os.path.join(path, 'results')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
     ranker.rank_method = "pseudo_relevance_feedback_embedding"
     ranker.rank("food and drinks")
     ranker.rank("tübingen attractions")
+    #ranker.rank_method = "TF-IDF"
+    #ranker.rank("food and drinks")
+    #ranker.rank("tübingen attractions")
+    #ranker.rank_method = "BM25"
+    #ranker.rank("food and drinks")
+    #ranker.rank("tübingen attractions")
+    #ranker.rank_method = "embedding"
+    #ranker.rank("food and drinks")
+    #ranker.rank("tübingen attractions")
     #ranker.rank_method = "TF-IDF"
     #ranker.rank("food and drinks")
     #ranker.rank("tübingen attractions")

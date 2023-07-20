@@ -238,8 +238,8 @@ class FocusedWebCrawler:
                     # Use temporary files for saving
                     temp_index_path = "temp_forward_index.joblib"
                     temp_inverted_index_path = "temp_inverted_index.joblib"
-                    temp_embedding_index_path = self.embedder.model_name + " temp_embedding_index.joblib"
-                    temp_embedding_index_path_pre = self.embedder.model_name + " temp_embedding_index_pre.joblib"
+                    temp_embedding_index_path = self.embedder.model_name + " temp_embedding_index_3.joblib"
+                    temp_embedding_index_path_pre = self.embedder.model_name + " temp_embedding_index_pre_3.joblib"
                     temp_visited_path = "temp_visited_pages.json"
                     temp_frontier_path = "temp_frontier_pages.joblib"
 
@@ -252,8 +252,9 @@ class FocusedWebCrawler:
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
-                    file_folder = "data_files_bert_2"
+                    file_folder = "data_files_bert_3"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
+                    os.replace(temp_embedding_index_path, os.path.join(file_folder, "embedding_index.joblib"))
                     os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
                     os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
