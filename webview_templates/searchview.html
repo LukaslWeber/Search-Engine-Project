@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block content %}
     <style>
         .box.has-border {
@@ -10,10 +11,14 @@
     </style>
 
     <section class="section">
-        <div class="container is-widescreen">
-            <h1 class="title">Search Page</h1>
 
+        <div class="container is-widescreen">
             <div class="columns is-centered">
+                <div class="column logo_image_div" >
+                    <div class="logo" style="margin-top:-50px; margin-bottom: -10px;">
+                        <img src="{% static 'tubingen_cropped.png' %}" alt="My Image" style="max-height: 120px;">
+                    </div>
+                </div>
                 <div class="column is-8">
                     <div class="buttons is-centered">
                         <div class="field has-addons">
@@ -28,7 +33,7 @@
                                 <form class="form" action="/search/" method="get">
                                     <div class="field">
                                         <div class="control is-expanded">
-                                            <input class="input is-expanded" type="text" id="queryField" name="queryField" value="{{ query }}">
+                                            <input class="input is-expanded-field" type="text" id="queryField" name="queryField" value="{{ query }}">
                                         </div>
                                     </div>
                                 </form>
@@ -49,31 +54,76 @@
                 </div>
             </div>
 
-            <h6 class="subtitle is-6">You searched for: {{ query }}</h6>
+            <div class="columns is-vcentered">
+                <div class="column">
+                    <h6 class="subtitle is-6">You searched for: {{ query }}</h6>
+                </div>
+                <div class="column">
+                    <div class="control is-expanded dropdown-container">
+                        <div class="dropdown-content">
+                            <label><b>Change all</b> playback speeds: </label>
+                            <select id="speedchange_all" onchange="changeAllSpeeds(this.value)">
+                                <option value="1">1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="1.75">1.75x</option>
+                                <option value="2">2x</option>
+                                <option value="2.25">2.25x</option>
+                                <option value="2.5">2.5x</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <div class="columns">
                 {% if search_results %}
                     <div class="column is-full">
                         <div class="box has-background-grey-dark has-text-light has-border">
-                            <p>{{ search_results.0.1 }}</p>
+                            <p class="website-title"><b>{{ search_results.0.1 }}</b></p>
+                            <p>{{ search_results.0.2 }}</p>
+                            <div class="audio-player" style="margin-bottom: 5px">
+                                <audio src="/media/{{ audio_files.0 }}" id="audio0" controls></audio>
+                                <label for="speed">Speed:</label>
+                                <select id="speed" onchange="changePlaybackSpeed(0, this.value)">
+                                    <option value="1">1x</option>
+                                    <option value="1.25">1.25x</option>
+                                    <option value="1.5">1.5x</option>
+                                    <option value="1.75">1.75x</option>
+                                    <option value="2">2x</option>
+                                    <option value="2.25">2.25x</option>
+                                    <option value="2.5">2.5x</option>
+                                </select>
+                            </div>
                             <p>Link: <a href="{{ search_results.0.0 }}">{{ search_results.0.0 }}</a></p>
-                            <audio src="/media/{{ audio_files.0 }}" id="audio{{ forloop.counter0 }}" controls></audio>
-                            <button class="read-button" data-index="{{ forloop.counter0 }}">Read</button>
                         </div>
                     </div>
                 {% endif %}
             </div>
 
             <div class="columns is-multiline">
-                {% for link, content in search_results|slice:"1:11" %}
+                {% for link, title, content in search_results|slice:"1:11" %}
                     {% for audio_file in audio_files %}
                         {% if forloop.counter0 == forloop.parentloop.counter %}
                             <div class="column is-half">
                                 <div class="box has-background-grey-dark has-text-light has-border">
+                                    <p class="website-title"><b>{{ title }}</b></p>
                                     <p>{{ content }}</p>
+                                    <div class="audio-player">
+                                        <audio src="/media/{{ audio_file}}" id="audio{{ forloop.parentloop.counter }}" controls></audio>
+                                        <label for="speed">Speed:</label>
+                                        <select id="speed" onchange="changePlaybackSpeed({{ forloop.parentloop.counter }}, this.value)">
+                                            <option value="1">1x</option>
+                                            <option value="1.25">1.25x</option>
+                                            <option value="1.5">1.5x</option>
+                                            <option value="1.75">1.75x</option>
+                                            <option value="2">2x</option>
+                                            <option value="2.25">2.25x</option>
+                                            <option value="2.5">2.5x</option>
+                                        </select>
+                                    </div>
                                     <p>Link: <a href="{{ link }}">{{ link }}</a></p>
-                                    <audio src="/media/{{ audio_file}}" id="audio{{ index }}" controls></audio>
-                                    <button class="read-button" data-index="{{ index }}">Read</button>
                                 </div>
                             </div>
                         {% endif %}
@@ -98,24 +148,33 @@
             {% endif %}
         </div>
 
-    {% for audio_file in audio_files %}
-        <audio src="/media/{{ audio_file }}" controls></audio>
-    {% endfor %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <<script>
+        function changeAllSpeeds(speed) {
+        const audioPlayers = document.querySelectorAll('.audio-player');
+        audioPlayers.forEach((player, index) => {
+            const selectElement = player.querySelector('select');
+            selectElement.value = speed; // Update the displayed value of the select element
+            changePlaybackSpeed(index, speed); // Update the playback speed of the audio element
+        });
+        }
 
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var playButtons = document.getElementsByClassName('read-button');
-            Array.from(playButtons).forEach(function(button) {
-                button.addEventListener('click', function() {
-                    var resultIndex = parseInt(this.getAttribute('data-index'));
-                    var audioElement = document.getElementById('audio' + resultIndex);
-
-                    audioElement.play();
-                });
-            });
+        // Function to change the playback speed of the audio
+        function changePlaybackSpeed(index, speed) {
+        const audioElement = document.getElementById('audio' + index);
+        audioElement.playbackRate = parseFloat(speed);
+        }
+        // Event listener for the speed dropdown at the top
+        const dropdownTop = document.getElementById('speedchange_all');
+        dropdownTop.addEventListener('change', function () {
+            const selectedSpeed = dropdownTop.value;
+            changeAllSpeeds(selectedSpeed);
         });
     </script>
+
+
 
     </section>
 {% endblock %}
