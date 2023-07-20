@@ -3,6 +3,8 @@ from Embedder import Embedder
 from utils import preprocessing
 import numpy as np
 import os
+import re
+from difflib import SequenceMatcher
 #Class for doing the ranking of the documents
 
 class Ranker:
@@ -59,7 +61,7 @@ class Ranker:
             sorted_docs = self.embedding_ranking(query)
         else:
             relevant_docs = self.query_union(query)
-            if self.rank_method == "mergev1":
+            if self.rank_method == "mergev2":
                 sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)
                 sorted_docs_BM25 = self.BM25(query, relevant_docs)
                 merged_list = sorted_docs_tf_idf[:5]
@@ -79,7 +81,33 @@ class Ranker:
         return [self.index_db[result[0]][0] for result in sorted_docs]
         #TODO return ordere list of links
 
+    #Helper functions
 
+    @staticmethod
+    def sequence_similarity(url1, url2):
+        matcher = SequenceMatcher(None, url1, url2)
+        similarity_ratio = matcher.ratio()
+        return similarity_ratio
+    
+    @staticmethod
+    def get_url(url):
+        regex_pattern = r"https?://([^/]+)/"
+        url_domain = re.search(regex_pattern, url).group(1)
+        return url_domain
+
+    def gain(self,url, urls, websites):
+        url_domain = self.get_url(url)
+        if url_domain not in urls:
+            gain = 10 #TODO finetuning
+        else:
+            #check other urls from website
+            other_website_urls = websites[url_domain]
+            similarities = map(lambda x: self.sequence_similarity(url, x), other_website_urls)
+            average_similarity = sum(similarities)/len(other_website_urls)
+            gain = (1-average_similarity) * 10/len(other_website_urls) #TODO finetuning
+        return gain
+    
+    
 
     def merge_rankings(self, sorted_docs1: list, sorted_docs2: list, sorted_docs3: list) -> list:
         """
@@ -91,18 +119,58 @@ class Ranker:
         """
         #TODO
         merged_ranking = []
+        urls = []
+        websites ={}
         tf_idf_factor = 0.5
+        bm25= tf_idf_factor =1
+        pseudo_relevance_factor = 10
         list1_pointer = 0
         list2_pointer = 0
         list3_pointer = 0
-        # naive merge take on with biggest increase
+        # naive merge take one with biggest increase
         for i in range(self.relevant_docs_count):
-            if tf_idf_factor * sorted_docs1[list1_pointer][1] > sorted_docs2[list2_pointer][1]:
+            #need to calculate the gain of each potenzial document
+            url1 = self.index_db[sorted_docs1[list1_pointer][0]][0]
+            url2 = self.index_db[sorted_docs2[list2_pointer][0]][0]
+            url3 = self.index_db[sorted_docs3[list3_pointer][0]][0]
+            list1_gain = self.gain(url1, urls, websites) + tf_idf_factor * sorted_docs1[list1_pointer][1]
+            list2_gain = self.gain(url2, urls, websites) + sorted_docs2[list2_pointer][1]
+            list3_gain = self.gain(url3, urls, websites) + pseudo_relevance_factor / sorted_docs3[list3_pointer][1]
+            print(url1, url2, url3)
+            print(list1_gain, list2_gain, list3_gain)
+            if list1_gain > list2_gain and list1_gain > list3_gain:
+                print('tf-idf')
                 merged_ranking.append(sorted_docs1[list1_pointer])
                 list1_pointer += 1
-            else:
+                url = self.get_url(url1)
+                if url not in urls:
+                    urls.append(url)
+                if url not in websites.keys():
+                    websites[url] = [url1]
+                else:
+                    websites[url].append(url1)
+            elif list2_gain > list1_gain and list2_gain > list3_gain:
+                print('bm25')
                 merged_ranking.append(sorted_docs2[list2_pointer])
                 list2_pointer += 1
+                url = self.get_url(url2)
+                if url not in urls:
+                    urls.append(url)
+                if url not in websites.keys():
+                    websites[url] = [url2]
+                else:
+                    websites[url].append(url2)
+            else:
+                print('pseudo')
+                merged_ranking.append(sorted_docs3[list3_pointer])
+                list3_pointer += 1
+                url = self.get_url(url3)
+                if url not in urls:
+                    urls.append(url)
+                if url not in websites.keys():
+                    websites[url] = [url3]
+                else:
+                    websites[url].append(url3)
         return merged_ranking
 
     
@@ -304,9 +372,9 @@ if __name__ == "__main__":
     index_embedding = os.path.join(path, 'embedding_index.joblib')
     result_path = os.path.join(path, 'results')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
-    ranker.rank_method = "mergev1"
+    ranker.rank_method = "mergev2"
     ranker.rank("food and drinks")
-    ranker.rank("tübingen attractions")
+    #ranker.rank("tübingen attractions")
     #ranker.rank_method = "TF-IDF"
     #ranker.rank("food and drinks")
     #ranker.rank("tübingen attractions")
