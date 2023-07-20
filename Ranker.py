@@ -59,11 +59,17 @@ class Ranker:
             sorted_docs = self.embedding_ranking(query)
         else:
             relevant_docs = self.query_union(query)
+            if self.rank_method == "mergev1":
+                sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)
+                sorted_docs_BM25 = self.BM25(query, relevant_docs)
+                merged_list = sorted_docs_tf_idf[:5]
+                sorted_docs_tf_idf.extend(sorted_docs_BM25[:5])
+                sorted_docs_pseudo_relevance = self.pseudo_relevance_feedback_embedding(merged_list, mode='distance')
+                sorted_docs = self.merge_rankings(sorted_docs_tf_idf, sorted_docs_BM25, sorted_docs_pseudo_relevance)
             if self.rank_method == "pseudo_relevance_feedback_embedding":
                 sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)[:5]
                 sorted_docs_BM25 = self.BM25(query, relevant_docs)[:5]
                 sorted_docs_tf_idf.extend(sorted_docs_BM25)
-                print(sorted_docs_tf_idf)
                 sorted_docs = self.pseudo_relevance_feedback_embedding(sorted_docs_tf_idf, mode='distance')
             elif self.rank_method == "BM25":
                 sorted_docs = self.BM25(query, relevant_docs)
@@ -72,6 +78,32 @@ class Ranker:
         self.save_results(sorted_docs, query)
         return [self.index_db[result[0]][0] for result in sorted_docs]
         #TODO return ordere list of links
+
+
+
+    def merge_rankings(self, sorted_docs1: list, sorted_docs2: list, sorted_docs3: list) -> list:
+        """
+        Merge the rankings of the different methods
+        :param sorted_docs1: the list of the top k documents for the first method (TF-IDF)
+        :param sorted_docs2: the list of the top k documents for the second method (BM25)
+        :param sorted_docs3: the list of the top k documents for the third method (pseudo relevance feedback)
+        :return: the list of the top k documents after the merging
+        """
+        #TODO
+        merged_ranking = []
+        tf_idf_factor = 0.5
+        list1_pointer = 0
+        list2_pointer = 0
+        list3_pointer = 0
+        # naive merge take on with biggest increase
+        for i in range(self.relevant_docs_count):
+            if tf_idf_factor * sorted_docs1[list1_pointer][1] > sorted_docs2[list2_pointer][1]:
+                merged_ranking.append(sorted_docs1[list1_pointer])
+                list1_pointer += 1
+            else:
+                merged_ranking.append(sorted_docs2[list2_pointer])
+                list2_pointer += 1
+        return merged_ranking
 
     
     def pseudo_relevance_feedback_embedding(self, sorted_docs:list, top_k:int=4, mode:str ="distance") -> list:
@@ -88,7 +120,7 @@ class Ranker:
             feedback.append(self.embeddings[self.id.index(sorted_doc[0])])
         mean_feedback = np.mean(feedback, axis=0)
         if mode == "distance":
-            distance = np.linalg.norm(self.embeddings - mean_feedback, axis=1)
+            distance = np.linalg.norm(self.embeddings - mean_feedback, axis=1) #Euclidian distance
             relevant_indecs = np.argsort(distance)
             sorted_docs = []
             for i in range(self.relevant_docs_count):
@@ -272,7 +304,7 @@ if __name__ == "__main__":
     index_embedding = os.path.join(path, 'embedding_index.joblib')
     result_path = os.path.join(path, 'results')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
-    ranker.rank_method = "pseudo_relevance_feedback_embedding"
+    ranker.rank_method = "mergev1"
     ranker.rank("food and drinks")
     ranker.rank("tübingen attractions")
     #ranker.rank_method = "TF-IDF"
