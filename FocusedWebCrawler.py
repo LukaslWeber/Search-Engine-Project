@@ -1,23 +1,11 @@
-import multiprocessing
-import os
-import random
-import re
-import tempfile
-import time
-import timeit
-from multiprocessing import freeze_support, Queue
+import os, re, tempfile, time, timeit
 from urllib.error import HTTPError
-
 from urllib3.exceptions import NewConnectionError
-
+from urllib.parse import urljoin, urlparse
 from PriorityQueue import PriorityQueue
 from typing import List
-from urllib.parse import urljoin, urlparse
-import requests
-import json
+import requests, json
 from simhash import Simhash
-from typing import Dict
-
 import numpy as np
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
 import urllib3
@@ -71,8 +59,10 @@ def has_tuebingen(string_to_check: str) -> bool:
 
 def has_tuebingen_content(url: str, string_to_check: str) -> bool:
     """
-    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
-    The uppercase should be ignored here
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" or "Tubingen" within
+    the content. The check is case-insensitive. An additional case has been introduced for wikipedia pages. They must
+    contain a form of Tübingen 5 or more times to be relevant as irrelevant Wikipedia pages often contain Tübingen
+    only once in their references.
     :param url: url of the page to check
     :param string_to_check: The string that is to be checked
     :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
@@ -82,12 +72,12 @@ def has_tuebingen_content(url: str, string_to_check: str) -> bool:
 
     pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
 
-    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):
+    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):  # Case for Wikipedia
         threshold = 5
-        print("WIKIPEDIA IN URL FOUJD; THRESHOLD 5")
-    else:
-        threshold = 2
-        print("THRESHOLD 2")
+    else:  # Case for all other pages
+        threshold = 3
+
+    print(f" threshold for checking occurences of Tübingen is: {threshold}")
 
     if len(matches) >= threshold or pattern_location.search(string_to_check):
         return True
@@ -679,7 +669,7 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 # -----------------------------
 # just testing
 if __name__ == '__main__':
-    urls = [ 'https://en.wikipedia.org/wiki/W%C3%BCrttemberg-Hohenzollern',
+    urls = ['https://en.wikipedia.org/wiki/W%C3%BCrttemberg-Hohenzollern',
             'https://en.wikipedia.org/wiki/T%C3%BCbingen',
             'https://www.dzne.de/en/about-us/sites/tuebingen',
             'https://www.britannica.com/place/Tubingen-Germany',
