@@ -22,23 +22,22 @@
                 <div class="column is-8">
                     <div class="buttons is-centered">
                         <div class="field has-addons">
-                            <div class="control">
-                                <a class="button is-info" href="{% url 'startpage' %}">
-                                    <span class="icon">
-                                        <i class="fas fa-arrow-left"></i>
-                                    </span>
-                                </a>
-                            </div>
-                            <form class="form" action="/search/" method="get">
-                                <div class="control is-expanded">
-
+                            <form class="columns form" action="/search/" method="get">
+                                <div class="column control">
+                                    <a class="button is-info" href="{% url 'startpage' %}">
+                                        <span class="icon">
+                                            <i class="fas fa-arrow-left"></i>
+                                        </span>
+                                    </a>
+                                </div>
+                                <div class="column control is-expanded">
                                     <div class="field">
                                         <div class="control is-expanded">
                                             <input class="input is-expanded-field" type="text" id="queryField" name="queryField" value="{{ query }}">
                                         </div>
                                     </div>
                                 </div>
-                                <div class="control is-flex">
+                                <div class="column control is-flex">
                                     <div class="select is-flex">
                                         <select class="ranker-kind-select" id="ranker_select" name="ranker_select">
                                             <option value="TF-IDF">TF-IDF</option>
@@ -47,7 +46,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="control">
+                                <div class="column control">
                                     <form class="form" action="/search/" method="get">
                                         <div class="control">
                                             <button class="button is-link" type="submit">
