@@ -1,8 +1,15 @@
+import multiprocessing
 import os
+import random
 import re
 import tempfile
 import time
 import timeit
+from multiprocessing import freeze_support, Queue
+from urllib.error import HTTPError
+
+from urllib3.exceptions import NewConnectionError
+
 from PriorityQueue import PriorityQueue
 from typing import List
 from urllib.parse import urljoin, urlparse
@@ -22,6 +29,28 @@ from Embedder import Embedder
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
     save_index
 
+from fake_useragent import UserAgent
+
+ua = UserAgent()
+user_agent_list = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18363',
+    'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows; U; Windows NT 6.1; rv:2.2) Gecko/20110201',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_4_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A'
+    'Mozilla/5.0 (Linux; U; Android 4.0.3; ko-kr; LG-L160L Build/IML74K) AppleWebkit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30',
+    'Mozilla/4.0 (compatible; MSIE 9.0; Windows NT 6.1)',
+    'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16.2',
+    ua.random,
+    ua.googlechrome,
+    ua.edge
+]
+
+
 
 def has_tuebingen(string_to_check: str) -> bool:
     """
@@ -32,11 +61,31 @@ def has_tuebingen(string_to_check: str) -> bool:
     """
     tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
     tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
+    tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
 
-    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(string_to_check):
+    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(
+            string_to_check) or tuebingen_reg.search(string_to_check):
         return True
 
     return False
+
+
+def has_tuebingen_content(string_to_check: str) -> bool:
+    """
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
+    The uppercase should be ignored here
+    :param string_to_check: The string that is to be checked
+    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
+    """
+    pattern = r'(t(?:ü|ue|u)?binge[nr])'
+    matches = re.findall(pattern, string_to_check, re.IGNORECASE)
+
+    pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
+
+    if len(matches) > 4 or pattern_location.search(string_to_check):
+        return True
+    else:
+        return False
 
 
 def get_priority(contains_tuebingen: bool, language: str) -> int or None:
@@ -69,7 +118,7 @@ class FocusedWebCrawler:
         :param frontier: np.ndarray of urls (Strings) or None if the past search should be continued!
         """
         # If no frontier is given --> Load the frontier, visited pages and index from a previous search
-        self.embedder = Embedder('roberta-base')
+        self.embedder = Embedder('bert-base-uncased')
         if frontier is None:
             self.frontier = load_frontier()
             self.visited = load_visited_pages()
@@ -87,12 +136,13 @@ class FocusedWebCrawler:
             self.index_db = {}
             self.inverted_index_db = {}
             self.index_embeddings_db = {}
+            self.index_embeddings_pre_db = {}
         # Maximum pages to be indexed
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         # self.identifier.set_languages(['de', 'en', 'fr'])
-        #store hashvalues of already indexed pages for duplicate detection
+        # store hashvalues of already indexed pages for duplicate detection
         self.hashvalues = {}
 
     def crawl(self, frontier: PriorityQueue, index_db):
@@ -105,7 +155,7 @@ class FocusedWebCrawler:
         if index_db == {}:
             num_pages_crawled = 0
         else:
-            num_pages_crawled= max(index_db.keys()) + 1
+            num_pages_crawled = max(index_db.keys()) + 1
 
         user_agent = get_user_agent()
         # initialize priority queue and add seed urls
@@ -117,20 +167,22 @@ class FocusedWebCrawler:
             if url in self.visited:
                 continue
 
-            #skip urls that are disallowed in the robots.txt file
+            # skip urls that are disallowed in the robots.txt file
             robots_content = get_robots_content(url)
-            if not is_allowed(user_agent, url, robots_content):
+            if not is_allowed(url, robots_content):
                 self.visited.add(url)
                 continue
 
-            print(f"Crawling page: {num_pages_crawled} with url: {url}")
+            time.sleep(0.15)
+
+            print(f"Crawling page: {num_pages_crawled} with url: {url}", flush=True)
 
             # get page content and links on the page
             start = timeit.default_timer()
             page_links, page_header, page_content, page_footer = get_web_content_and_urls(url)
             print(f" getting content and urls took: {timeit.default_timer() - start:.2f}")
-            #print(f" Page content: {page_content}")
-            #print(f" Page links: {page_links}")
+            # print(f" Page content: {page_content}")
+            # print(f" Page links: {page_links}")
 
             # skip empty pages
             if page_links is None and page_content is None:
@@ -138,8 +190,8 @@ class FocusedWebCrawler:
                 continue
 
             # Check if "Tübingen" or "Tuebingen" is contained somewhere in the URL or document
-            contains_tuebingen = has_tuebingen(url) or has_tuebingen(page_header) or \
-                                 has_tuebingen(page_content) or has_tuebingen(page_footer)
+            contains_tuebingen = has_tuebingen(url) or has_tuebingen_content(
+                " ".join([page_header, page_content, page_footer]))
             start = timeit.default_timer()
             page_language = self.detect_language(page_content)
             print(f" Detecting language took: {timeit.default_timer() - start:.2f}s")
@@ -160,46 +212,51 @@ class FocusedWebCrawler:
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
                 if not (link in self.visited):
-                  if is_valid_url(link):
-                      frontier.put((page_priority, link))
-                  else:
-                    print(f"An invalid URL has been found and could not be added to the frontier: {link}")
+                    if is_valid_url(link):
+                        frontier.put((page_priority, link))
+                    else:
+                        print(f" An invalid URL has been found and could not be added to the frontier: {link}")
                 else:
-                    print(f"The URL has already been visited. Skipping:{link}")
+                    print(f" The URL has already been visited. Skipping:{link}")
             # Add the URL and page content to the index
 
-            #duplicate detection
+            # duplicate detection
             if is_duplicate(page_content, self.hashvalues):
                 continue
+
             # Add the URL and page content to the index
-            if page_priority == 1: #save only english pages with tübingen content
+            if page_priority == 1:  # save only english pages with tübingen content
+                self.index_embeddings(page_content, num_pages_crawled, pre=False)
                 preprocessed_page_content = preprocessing(page_content)
-                self.index_embeddings(preprocessed_page_content, num_pages_crawled)
+                # self.index_embeddings(preprocessed_page_content, num_pages_crawled)
                 self.inverted_index(preprocessed_page_content, num_pages_crawled)
                 self.index(url, num_pages_crawled, page_content)
 
-            self.hashvalues[url]=compute_similarity_hash(page_content)
+            self.hashvalues[url] = compute_similarity_hash(page_content)
 
             # Save everything to files after every 25 documents and at the end of crawling
             if num_pages_crawled % 25 == 0 or num_pages_crawled == self.max_pages:
                 try:
                     # Use temporary files for saving
-                    temp_index_path = os.path.join(tempfile.gettempdir(), "temp_forward_index.joblib")
-                    temp_inverted_index_path = os.path.join(tempfile.gettempdir(), "temp_inverted_index.joblib")
-                    temp_embedding_index_path = os.path.join(tempfile.gettempdir(), "temp_embedding_index.joblib")
-                    temp_visited_path = os.path.join(tempfile.gettempdir(), "temp_visited_pages.json")
-                    temp_frontier_path = os.path.join(tempfile.gettempdir(), "temp_frontier_pages.joblib")
+                    temp_index_path = "temp_forward_index.joblib"
+                    temp_inverted_index_path = "temp_inverted_index.joblib"
+                    temp_embedding_index_path = self.embedder.model_name + " temp_embedding_index_3.joblib"
+                    temp_embedding_index_path_pre = self.embedder.model_name + " temp_embedding_index_pre_3.joblib"
+                    temp_visited_path = "temp_visited_pages.json"
+                    temp_frontier_path = "temp_frontier_pages.joblib"
 
                     # Save to temporary files
                     save_index(temp_index_path, self.index_db)
                     save_index(temp_inverted_index_path, self.inverted_index_db)
                     save_index(temp_embedding_index_path, self.index_embeddings_db)
+                    save_index(temp_embedding_index_path_pre, self.index_embeddings_pre_db)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
-                    file_folder = "data_files"
+                    file_folder = "data_files_bert_3"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
+                    os.replace(temp_embedding_index_path, os.path.join(file_folder, "embedding_index.joblib"))
                     os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
                     os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
@@ -225,17 +282,22 @@ class FocusedWebCrawler:
         :param index_db: The location of the local index storing the discovered documents.
         :return:
         """
-        self.index_db[key] = (url, content)
+        length = len(content.split())
+        self.index_db[key] = (url, length)
 
-    def index_embeddings(self,doc: str, key) -> None:
+    def index_embeddings(self, doc: str, key, pre=True) -> None:
         """
         Add a document embedding to the embedding index
         :param doc: The document to be indexed already preprocessed
+        :param pre: True if text was preprocessed
         :param key
         """
-        self.index_embeddings_db[key] = self.embedder.embed(doc)
+        if pre:
+            self.index_embeddings_pre_db[key] = self.embedder.embed(doc)
+        else:
+            self.index_embeddings_db[key] = self.embedder.embed(doc)
 
-    def inverted_index(self,  doc:str, key) -> None:
+    def inverted_index(self, doc: str, key) -> None:
         """
         Add a document to the inverted index. You need (at least) two parameters:
         :param doc: The document to be indexed already preprocessed
@@ -256,7 +318,7 @@ class FocusedWebCrawler:
                 if not found:
                     self.inverted_index_db[term].append([key, [position]])
 
-    def detect_language(self, text: str) -> str:
+    def detect_language(self, text: str) -> str or None:
         """
         Method that detects the language that was used in a document to prevent German and documents of other
         languages to get into our index
@@ -277,6 +339,7 @@ class FocusedWebCrawler:
         except Exception as e:
             print(f"Some error occured during language detection of the string: {str(e)}")
             return None
+
 
 # checks if given url is valid (considered valid if host and port components are present)
 def is_valid_url(url) -> bool:
@@ -299,33 +362,58 @@ def get_base_url(url: str) -> str:
     return base_url
 
 
-def get_web_content_and_urls(url: str, max_retries: int = 1, retry_delay: float = 2) \
-        -> (List[str], str, str, str) or (None, None, None, None):
+def send_get_request(url: str, max_retries: int = 1, retry_delay: float = 2) -> bytes:
     """
-    Method that sends a http request with the given URL and gives the contained content and URLs back
+    Method that sends an http get request and returns the http page in bytes
+    :param url: URL to send the GET request to
     :param max_retries: Optional, Number of maximum retries if the get request fails
     :param retry_delay: Optional, The delay between requests if a get request fails
+    :return: HTML bytes of the internet page
+    """
+    raw_html_content = b""
+    for idx, user_agent in enumerate(user_agent_list):
+        if raw_html_content == b"":
+            print(f"Trying user agent identity {idx}")
+            retry = urllib3.Retry(total=3, redirect=3)
+            timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
+            headers = {
+                'User-Agent': user_agent,
+                'Accept-Language': '*'
+            }
+            http = urllib3.PoolManager(retries=retry, timeout=timeout, headers=headers)
+            for retry_count in range(max_retries):
+                try:
+                    with http.request('GET', url, headers=headers, preload_content=False) as response:
+                        raw_html_content = b""
+                        for chunk in response.stream(4096):
+                            raw_html_content += chunk
+                        if response.status == 200:
+                            break
+                        else:
+                            raw_html_content = b""
+                            raise Exception(
+                                f"Exception in GET request. The response status was not 200 OK but was {response.status}.")
+                except Exception as e:
+                    error_str = f"Attempt {retry_count + 1} failed. "
+                    if retry_count > 1:
+                        error_str += "Retrying after {retry_delay} seconds.\n "
+                    error_str += f"Exception: {e}"
+                    print(error_str)
+                    time.sleep(retry_delay)
+    return raw_html_content
+
+
+def get_web_content_and_urls(url: str) \
+        -> (List[str], str, str, str) or (None, None, None, None):
+    """
+    Method that gets the html content of  the given URL and gives the contained header, content, footer and URLs back
     :param url: URL of the website that should be retrieved
+    :return (links:List[str], header_content:str, body_content:str, footer_content:str)
     """
     # handling failed requests
-    retry = urllib3.Retry(total=3, redirect=3)
-    timeout = urllib3.Timeout(connect=2.0, read=2.0)
-    http = urllib3.PoolManager(retries=retry, timeout=timeout)
+    raw_html_content = send_get_request(url)
 
-    raw_html_content = ""
-    for retry in range(max_retries):
-        try:
-            with http.request('GET', url, preload_content=False) as response:
-                # Stream the response data in chunks
-                raw_html_content = b""
-                for chunk in response.stream(4096):
-                    raw_html_content += chunk
-            break  # Break out of the retry loop if the request is successful
-        except Exception as e:
-            print(f"Attempt {retry + 1} failed. Retrying after {retry_delay} seconds., exception: {e}")
-            time.sleep(retry_delay)
-
-    if raw_html_content != "":
+    if raw_html_content != "" or raw_html_content != b"" or raw_html_content is not None:
         # Decode the retrieved html web page
         html_content = raw_html_content.decode('utf-8', 'ignore')
         # Create a BeautifulSoup object to parse the HTML content
@@ -379,6 +467,7 @@ def get_absolute_links(url: str, links: List[str]) -> List[str]:
             absolute_links.add(absolute_link)
     return list(absolute_links)
 
+
 def get_robots_content(url: str) -> str:
     """
     Method that returns content of the robots.txt file for a given URL
@@ -388,28 +477,29 @@ def get_robots_content(url: str) -> str:
     root_url = get_base_url(url)
     robots_url = root_url + "/robots.txt"
 
-    http = urllib3.PoolManager()
-
     try:
-        response = http.request('GET', robots_url)
+        robot_content_bytes = send_get_request(robots_url)
         try:
-            content = response.data.decode('utf-8')
+            content = robot_content_bytes.decode('utf-8', 'ignore')
         except UnicodeDecodeError:
-            content = response.data.decode('latin-1')
+            content = robot_content_bytes.decode('latin-1', 'ignore')
         return content
-    except urllib3.exceptions.HTTPError as e:
+    except HTTPError as e:
         print(f"HTTP error occurred while retrieving robots.txt: {str(e)}")
-    except urllib3.exceptions.NewConnectionError as e:
+    except NewConnectionError as e:
         print(f"URL error occurred while retrieving robots.txt: {str(e)}")
+    except Exception as e:
+        print(f"Another error occured while retrieving robots.txt: {str(e)}")
 
     return ""
 
-def get_user_agent() -> str:
+
+def get_user_agent() -> None or str:
     """
     method that returns the current user agent
     """
     try:
-        response = requests.get('https://httpbin.org/user-agent')
+        response = requests.get('https://httpbin.org/user-agent', timeout=5.0)
         response_json = response.json()
         user_agent = response_json.get('user-agent')
         return user_agent
@@ -418,32 +508,37 @@ def get_user_agent() -> str:
         return None
 
 
-def is_allowed(user_agent: str, url: str, robots_content: str) -> bool:
+def is_allowed(url: str, robots_content: str) -> bool:
     """
     Method that checks if crawling a given url is allowed in the current robots.txt file
-    :param user agent: the current user agent
     :param url: current url
     :param robots_content: content of the current robots.txt file
     :return: False if crawling the url is disallowed in robots, True otherwise
     """
+    # get the path of the url without base url ('http://www.example.com/hithere/something/else' -> /hithere/something/else)
     path = urlparse(url).path
-    #save rules relevant for the current user agent
-    user_agent_rules = []
+    # save rules relevant for the current user agent
+    # user_agent_rules = []
     current_user_agent = None
     for line in robots_content.splitlines():
         if line.lower().startswith("user-agent"):
             current_user_agent = line.split(":")[1].strip()
-        elif line.lower().startswith("disallow") and (current_user_agent == user_agent or current_user_agent == "*"):
+        elif line.lower().startswith("disallow") and current_user_agent == "*":
             disallowed_path = line.split(":")[1].strip()
-            #append relevant rules
-            user_agent_rules.append(disallowed_path)
-
-    #check if the provided path is allowed
-    for rule in user_agent_rules:
-        if path.startswith(rule):
-            print(f"disallowed url detected: {path}")
-            return False
+            if path.startswith(disallowed_path):
+                print(f"disallowed url detected: {path}")
+                return False
+            # append relevant rules
+            # user_agent_rules.append(disallowed_path)
     return True
+
+    # check if the provided path is allowed
+    # for rule in user_agent_rules:
+    #     if path.startswith(rule):
+    #         print(f"disallowed url detected: {path}")
+    #         return False
+    # return True
+
 
 def compute_similarity_hash(page_content: str, k: int = 5) -> str:
     """
@@ -455,11 +550,11 @@ def compute_similarity_hash(page_content: str, k: int = 5) -> str:
     hash_value = Simhash(page_content).value
     similarity_hash = hash_value >> k
     binary_hash = format(similarity_hash, '064b')
-    
-    return binary_hash
-    
 
-def is_duplicate(content: str, previous_hashes , k: int = 5):
+    return binary_hash
+
+
+def is_duplicate(content: str, previous_hashes, k: int = 5):
     """
     Method that checks a document against an existing collection of previsouly seen documents for near duplicates
     :param content: page content of the current page
@@ -470,11 +565,13 @@ def is_duplicate(content: str, previous_hashes , k: int = 5):
     current_hash = compute_similarity_hash(content)
 
     for hash in previous_hashes:
-        bit_difference = np.sum(np.abs(np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash]])))
+        bit_difference = np.sum(np.abs(
+            np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash]])))
         if bit_difference <= k:
             return True
-    
+
     return False
+
 
 # _______________ OLD UNUSED METHODS __________________-
 """
@@ -573,51 +670,18 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 
 # -----------------------------
 # just testing
-urls = ['https://uni-tuebingen.de/en/',
-        'https://www.tuebingen.mpg.de/en',
-        'https://www.tuebingen.de/en/',
-        'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-        'https://www.dzne.de/en/about-us/sites/tuebingen',
-        'https://www.britannica.com/place/Tubingen-Germany',
-        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-        'https://wikitravel.org/en/T%C3%BCbingen',
-        'https://www.tasteatlas.com/local-food-in-tubingen',
-        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+if __name__ == '__main__':
+    urls = ['https://uni-tuebingen.de/en/',
+           'https://www.tuebingen.mpg.de/en',
+           'https://www.tuebingen.de/en/',
+           'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+           'https://www.dzne.de/en/about-us/sites/tuebingen',
+           'https://www.britannica.com/place/Tubingen-Germany',
+           'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+           'https://wikitravel.org/en/T%C3%BCbingen',
+           'https://www.tasteatlas.com/local-food-in-tubingen',
+           'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+           'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
 
-crawler = FocusedWebCrawler(frontier=urls, max_pages=20)
-crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
-
-# # Print the visited URLs to verify the crawling process
-# print("Visited URLs:")
-# for url in crawler.page_overview:
-#     print(url)
-
-#url = 'https://www.tuebingen.de/en/'
-#root_url = get_base_url(url)
-#robots_url = root_url + "/robots.txt"
-#response = requests.get(robots_url)
-#print(response.text)
-#print(get_user_agent())
-
-#content = get_web_content_and_urls('https://en.wikipedia.org/wiki/T%C3%BCbingen')[1]
-#content2 = get_web_content_and_urls('https://www.dzne.de/en/about-us/sites/tuebingen')[1]
-#content3 = get_web_content_and_urls('https://uni-tuebingen.de/en/')[1]
-#content31 = '\n \n \n \n Skip to main navigation \n \n \n Skip to content \n \n \n Skip to footer \n \n \n Skip to search \n \n \n \n \n \n \n \n Uni A-Z Contact \n \n \n \n \n \n \n \n Search \n \n \n \n Search (via Ecosia) \n \n \n \n \n \n \n \n \n \n\t\t\t\t\t\t\t\t\t\tSearch\n\t\t\t\t\t\t\t\t\t\t \n \n \n \n \n \n \n \n \n \n \n \n Login \n \n \n \n Login \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n Login \n \n \n \n \n \n \n \n \n \n \n Language \n \n \n \n Choose language \n \n \n \n German English \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n\t\t\t\tInformation for\n\t\t\t \n Prospective Students Current Students Staff Teaching Staff Alumni Medien Business Lifelong learning \n \n \n \n\t\t\t\tQuicklinks\n\t\t\t \n All Degree Programs ALMA Portal Excellence Strategy Staff Search (EPV) Student Administration University Library Online Course Catalogue Webmail Uni Tübingen Advice for International Students \n \n \n \n \n \n \n \n\t\t\t\t\t\t\t\tUni-Tübingen\n\t\t\t\t\t\t\t \n \n \n University Back Profile Back Facts and Figures Values and visions Awards and distinctions Freunde und Förderer History of the University Organisation and management Back University Management Senat Universitätsrat Kommissionen News and publications Back Press Releases Online press review Media attempto online Social Media Videos Podcasts Newsletter Uni Tübingen aktuell Publications Events Personalia Amtliche Bekanntmachungen Campusleben Back Veranstaltungen Culture, the arts and leisure time Unishop Job advertisements Back Job vacancies Publish job advertisements Berufsausbildung an der Universität Tübingen How to get here Public Engagement Back Studium Generale The Children’s University of Tübingen Neuroscience student lab Faculties Back Protestant Theology Back Faculty News Courses and Students research Chairs and Institutes Staff Catholic Theology Back Faculty Studium Lehrstühle Gleichstellung Forschung Fachschaft Alumni Law Back Faculty Studium Forschung Lehrstühle und Personen Einrichtungen Faculty of Medicine Back Forschungsschwerpunkte Faculty of Humanities Back Faculty Study Research Departments International Praxis&Beruf Faculty of Economics and Social Sciences Back Subjects Studies Research Offices & Resources International Faculty of Science Back Faculty Research Departments Studies International Postgraduate Center for Islamic Theology Back Center News Study Chairs Research Staff International Interfaculty Institutes Study Back Profile Back Projekt "Erfolgreich studieren in Tübingen" (ESIT) Prospective students Back Tübingen as a place to study Angebote für Studieninteressierte Angebote für Schulen Finding a Course Back Degree Programs Available Studiengänge in Kooperation mit anderen Universitäten Studienmodelle Master’s studies at the University of Tübingen Lehramtsstudium Guide to Courses Transdisciplinary Competencies Application and Enrollment Back Bachelor\'s degree Master\'s Degree Bewerbung Lehramt Bewerbung Staatsexamen Advanced semesters Special applications for studies General information Enrolling at the University of Tübingen Doctoral studies at the University of Tübingen Advice and Info Back General Study Counseling Service Studienfachberatung Counseling for international students Teacher training degrees Students with disabilities Support in the pandemic Wegweiser: Schritt für Schritt Services by topic Services by study phase Organizing Your Studies Back Orientation Fees Administration Progressing successfully through your studies Semester and study planning New orientation Student Life Back Student Housing Essen Student finances Semester ticket Clubs and Societies Get Involved Unfallversicherung Steps towards employment Back Career Service Praktikum und Praxiserfahrung Praxisportal - job and internship board Career Paths Unternehmenskontakte Career Events Angebote für Alumni Contact persons Research Back Research infrastructure Back Digital Humanities Center LISA+ Quantitative Biology Center (QBiC) Tübingen Structural Microscopy (TSM) Research Data Management (RDM) Core Research Back Profile Areas Cluster of Excellence CMFI Cluster of Excellence iFIT Cluster of Excellence Machine Learning CIN LEAD Graduate School & Research Network Collaborative Research Centers Transregional Collaborative Research Centers (CRC-TRRs) DFG Research Units Research Training Groups Emmy Noether Groups Centers and Institutes Back Carl Friedrich von Weizsäcker Center The China Centre (CCT) College of Fellows European Research Center on Contemporary Taiwan Forum Scientiarum International Center for Ethics in the Sciences and Humanities Tübingen Center for Digital Education Tübingen Forum for Science and Humanities Center for Gender and Diversity Research (ZGD) Zentrum für frankophone Welten Zentrum Vormodernes Europa Support for junior researchers Back Graduate Academy Doctorates at the University of Tübingen Funding and support for junior researchers Partner Institutions Innovation Back Technology Transfer Office Startup Center Industry Liaison Office Support Back Research Funding Research Funding News Guidance for Grant Proposals Graduate Academy Applicants to Professorships Committees Good Scientific Practice Facilities Back Administration Back I – Development, Structure and Legal Affairs II – Research III – Academic Affairs IV – Student Affairs V – International Office VI – Personal und Innere Dienste VII – Finance Division VIII – Construction, Safety, and Environment Staff Units Gender Equality Back Gender Equality Representative Gender Equality Office Family Office Diversity Office Beauftragte für Chancengleichheit Central Institutions Back Welcome to the Botanical Garden Center for Brazil and Latin America Dr. Eberle Zentrum für digitale Kompetenzen University Sports Center Informations-, Kommunikations- und Medienzentrum (IKM) Isotopenlabor & Strahlenschutz Tübingen School of Education (TüSE) Zentrum für Evaluation und Qualitätsmanagement The Center for Media Competence Zentrum für Quantitative Biologie University Library Back Searching & Borrowing Learning & Working Publishing & Research About us UB A-Z University Archives Weiterbildung Zentrum für Datenverarbeitung Back New here? Frequently asked Services Support The ZDV Projekte Staff Representatives, Advisory Services Back Staff Council Jugend- und Auszubildendenvertretung Representative council for disabled employees - Disability Office Arbeits-, Gesundheits- und Umweltschutz Psychosocial counseling service Ansprechpersonen für Fragen im Zusammenhang mit sexueller Belästigung Betriebliches Gesundheitsmanagement Datenschutzbeauftragter Digital Transformation Lab Lagepläne International Back University Back Profile Partnerships Networks Branch offices and research stations International Centers Contacts and Addresses Solidarity with Ukraine English in everyday university life Study in Tübingen Back Programs and modules for international students Application for international students International PhD candidates Erasmus and Exchange to Tübingen Summer courses and short-term programs Getting started and orientation for international students Advice and counseling for international students FAQ Studying Abroad Back Wege ins Ausland Erfahrungsberichte Bewerbung Finanzierung und Förderung Vorbereitung Zurück aus dem Ausland Learning Languages Back House of languages Learn German Foreign Language Center Tests and certificates International in Tübingen Research Back Research profile Funding Research Alums Support for collaborations Welcome Center Back Registration with the Welcome Center Our services for international researchers Accommodation Service Services for host institutes Social events Contact Other University Services Teaching / training abroad (ERASMUS+) Information for Back Prospective Students Current Students Staff Back Advice and help Computer and IT Staying healthy Communication and media Human Resources Use of rooms Corporate Design Teaching Staff Back Digital teaching Digital examinations Center for Teaching and Learning Planning and Development of Degree Programs Angebote der Zentralen Studienberatung Alumni Back Alumni registration Get involved News Research alumni From the Network Contact us Get involved Medien Business Lifelong learning Back Über uns Hochschulweiterbildung@BW Programm Abschlüsse Teilnahmevoraussetzungen Fördermöglichkeiten Häufige Fragen Anmeldung Quicklinks Back All Degree Programs ALMA Portal Excellence Strategy Staff Search (EPV'
-##hash = simhash(content)
-#test = {} 
-#test['https://en.wikipedia.org/wiki/T%C3%BCbingen'] = compute_similarity_hash(content)
-#test['https://www.dzne.de/en/about-us/sites/tuebingen'] = compute_similarity_hash(content2)
-#test['some url'] = compute_similarity_hash(content3)
-content = get_web_content_and_urls('https://en.wikipedia.org/wiki/T%C3%BCbingen')[1]
-content2 = get_web_content_and_urls('https://www.dzne.de/en/about-us/sites/tuebingen')[1]
-content3 = get_web_content_and_urls('https://uni-tuebingen.de/en/')[1]
-content31 = '\n \n \n \n Skip to main navigation \n \n \n Skip to content \n \n \n Skip to footer \n \n \n Skip to search \n \n \n \n \n \n \n \n Uni A-Z Contact \n \n \n \n \n \n \n \n Search \n \n \n \n Search (via Ecosia) \n \n \n \n \n \n \n \n \n \n\t\t\t\t\t\t\t\t\t\tSearch\n\t\t\t\t\t\t\t\t\t\t \n \n \n \n \n \n \n \n \n \n \n \n Login \n \n \n \n Login \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n Login \n \n \n \n \n \n \n \n \n \n \n Language \n \n \n \n Choose language \n \n \n \n German English \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n\t\t\t\tInformation for\n\t\t\t \n Prospective Students Current Students Staff Teaching Staff Alumni Medien Business Lifelong learning \n \n \n \n\t\t\t\tQuicklinks\n\t\t\t \n All Degree Programs ALMA Portal Excellence Strategy Staff Search (EPV) Student Administration University Library Online Course Catalogue Webmail Uni Tübingen Advice for International Students \n \n \n \n \n \n \n \n\t\t\t\t\t\t\t\tUni-Tübingen\n\t\t\t\t\t\t\t \n \n \n University Back Profile Back Facts and Figures Values and visions Awards and distinctions Freunde und Förderer History of the University Organisation and management Back University Management Senat Universitätsrat Kommissionen News and publications Back Press Releases Online press review Media attempto online Social Media Videos Podcasts Newsletter Uni Tübingen aktuell Publications Events Personalia Amtliche Bekanntmachungen Campusleben Back Veranstaltungen Culture, the arts and leisure time Unishop Job advertisements Back Job vacancies Publish job advertisements Berufsausbildung an der Universität Tübingen How to get here Public Engagement Back Studium Generale The Children’s University of Tübingen Neuroscience student lab Faculties Back Protestant Theology Back Faculty News Courses and Students research Chairs and Institutes Staff Catholic Theology Back Faculty Studium Lehrstühle Gleichstellung Forschung Fachschaft Alumni Law Back Faculty Studium Forschung Lehrstühle und Personen Einrichtungen Faculty of Medicine Back Forschungsschwerpunkte Faculty of Humanities Back Faculty Study Research Departments International Praxis&Beruf Faculty of Economics and Social Sciences Back Subjects Studies Research Offices & Resources International Faculty of Science Back Faculty Research Departments Studies International Postgraduate Center for Islamic Theology Back Center News Study Chairs Research Staff International Interfaculty Institutes Study Back Profile Back Projekt "Erfolgreich studieren in Tübingen" (ESIT) Prospective students Back Tübingen as a place to study Angebote für Studieninteressierte Angebote für Schulen Finding a Course Back Degree Programs Available Studiengänge in Kooperation mit anderen Universitäten Studienmodelle Master’s studies at the University of Tübingen Lehramtsstudium Guide to Courses Transdisciplinary Competencies Application and Enrollment Back Bachelor\'s degree Master\'s Degree Bewerbung Lehramt Bewerbung Staatsexamen Advanced semesters Special applications for studies General information Enrolling at the University of Tübingen Doctoral studies at the University of Tübingen Advice and Info Back General Study Counseling Service Studienfachberatung Counseling for international students Teacher training degrees Students with disabilities Support in the pandemic Wegweiser: Schritt für Schritt Services by topic Services by study phase Organizing Your Studies Back Orientation Fees Administration Progressing successfully through your studies Semester and study planning New orientation Student Life Back Student Housing Essen Student finances Semester ticket Clubs and Societies Get Involved Unfallversicherung Steps towards employment Back Career Service Praktikum und Praxiserfahrung Praxisportal - job and internship board Career Paths Unternehmenskontakte Career Events Angebote für Alumni Contact persons Research Back Research infrastructure Back Digital Humanities Center LISA+ Quantitative Biology Center (QBiC) Tübingen Structural Microscopy (TSM) Research Data Management (RDM) Core Research Back Profile Areas Cluster of Excellence CMFI Cluster of Excellence iFIT Cluster of Excellence Machine Learning CIN LEAD Graduate School & Research Network Collaborative Research Centers Transregional Collaborative Research Centers (CRC-TRRs) DFG Research Units Research Training Groups Emmy Noether Groups Centers and Institutes Back Carl Friedrich von Weizsäcker Center The China Centre (CCT) College of Fellows European Research Center on Contemporary Taiwan Forum Scientiarum International Center for Ethics in the Sciences and Humanities Tübingen Center for Digital Education Tübingen Forum for Science and Humanities Center for Gender and Diversity Research (ZGD) Zentrum für frankophone Welten Zentrum Vormodernes Europa Support for junior researchers Back Graduate Academy Doctorates at the University of Tübingen Funding and support for junior researchers Partner Institutions Innovation Back Technology Transfer Office Startup Center Industry Liaison Office Support Back Research Funding Research Funding News Guidance for Grant Proposals Graduate Academy Applicants to Professorships Committees Good Scientific Practice Facilities Back Administration Back I – Development, Structure and Legal Affairs II – Research III – Academic Affairs IV – Student Affairs V – International Office VI – Personal und Innere Dienste VII – Finance Division VIII – Construction, Safety, and Environment Staff Units Gender Equality Back Gender Equality Representative Gender Equality Office Family Office Diversity Office Beauftragte für Chancengleichheit Central Institutions Back Welcome to the Botanical Garden Center for Brazil and Latin America Dr. Eberle Zentrum für digitale Kompetenzen University Sports Center Informations-, Kommunikations- und Medienzentrum (IKM) Isotopenlabor & Strahlenschutz Tübingen School of Education (TüSE) Zentrum für Evaluation und Qualitätsmanagement The Center for Media Competence Zentrum für Quantitative Biologie University Library Back Searching & Borrowing Learning & Working Publishing & Research About us UB A-Z University Archives Weiterbildung Zentrum für Datenverarbeitung Back New here? Frequently asked Services Support The ZDV Projekte Staff Representatives, Advisory Services Back Staff Council Jugend- und Auszubildendenvertretung Representative council for disabled employees - Disability Office Arbeits-, Gesundheits- und Umweltschutz Psychosocial counseling service Ansprechpersonen für Fragen im Zusammenhang mit sexueller Belästigung Betriebliches Gesundheitsmanagement Datenschutzbeauftragter Digital Transformation Lab Lagepläne International Back University Back Profile Partnerships Networks Branch offices and research stations International Centers Contacts and Addresses Solidarity with Ukraine English in everyday university life Study in Tübingen Back Programs and modules for international students Application for international students International PhD candidates Erasmus and Exchange to Tübingen Summer courses and short-term programs Getting started and orientation for international students Advice and counseling for international students FAQ Studying Abroad Back Wege ins Ausland Erfahrungsberichte Bewerbung Finanzierung und Förderung Vorbereitung Zurück aus dem Ausland Learning Languages Back House of languages Learn German Foreign Language Center Tests and certificates International in Tübingen Research Back Research profile Funding Research Alums Support for collaborations Welcome Center Back Registration with the Welcome Center Our services for international researchers Accommodation Service Services for host institutes Social events Contact Other University Services Teaching / training abroad (ERASMUS+) Information for Back Prospective Students Current Students Staff Back Advice and help Computer and IT Staying healthy Communication and media Human Resources Use of rooms Corporate Design Teaching Staff Back Digital teaching Digital examinations Center for Teaching and Learning Planning and Development of Degree Programs Angebote der Zentralen Studienberatung Alumni Back Alumni registration Get involved News Research alumni From the Network Contact us Get involved Medien Business Lifelong learning Back Über uns Hochschulweiterbildung@BW Programm Abschlüsse Teilnahmevoraussetzungen Fördermöglichkeiten Häufige Fragen Anmeldung Quicklinks Back All Degree Programs ALMA Portal Excellence Strategy Staff Search (EPV'
-test = {} 
-test['https://en.wikipedia.org/wiki/T%C3%BCbingen'] = compute_similarity_hash(content)
-test['https://www.dzne.de/en/about-us/sites/tuebingen'] = compute_similarity_hash(content2)
-test['some url'] = compute_similarity_hash(content3)
-#dup = is_duplicate(content3, test, 5)
-#dup = is_duplicate(content31, test)
-#print("document is duplicate:")
-#print(dup)
+    crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
+    crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
