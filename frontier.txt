@@ -26,5 +26,4 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://tuebingenresearchcampus.com/',
         'https://cyber-valley.de/en',
         'https://www.bccn-tuebingen.de/',
-
         ]
