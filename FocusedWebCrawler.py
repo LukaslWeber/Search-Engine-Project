@@ -1,23 +1,23 @@
 import os, re, tempfile, time, timeit
-from urllib.error import HTTPError
-from urllib3.exceptions import NewConnectionError
-from urllib.parse import urljoin, urlparse
 from PriorityQueue import PriorityQueue
 from typing import List
 import requests, json
 from simhash import Simhash
 import numpy as np
+from fake_useragent import UserAgent
 # Method for sending and receiving websites and sending http requests (urllib) and parsing them (BeautifulSoup)
 import urllib3
+from urllib.error import HTTPError
+from urllib3.exceptions import NewConnectionError
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 # For checking whether a page is English or German
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
-from utils import preprocessing
-from Embedder import Embedder
+# Own imports
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
     save_index
-
-from fake_useragent import UserAgent
+from Embedder import Embedder
+from utils import preprocessing
 
 ua = UserAgent()
 user_agent_list = [
@@ -91,8 +91,8 @@ def get_priority(contains_tuebingen: bool, language: str) -> int or None:
     :param contains_tuebingen: bool, Parameter that indicates whether some form of
     the word "Tübingen" is contained in the document
     :param language: str, String that represents the abbreviation of the most used language in the document
-    :return: Integer indicating the priority where 1 is the highest and 4 is the lowest priority or None if the document is
-    not of relevance of any sort.
+    :return: Integer indicating the priority where 1 is the highest and 4 is the lowest priority or None if
+    the document is not of relevance of any sort.
     """
     if contains_tuebingen and language == 'en':
         return 1
@@ -144,7 +144,7 @@ class FocusedWebCrawler:
 
     def crawl(self, frontier: PriorityQueue, index_db):
         """
-        Crawls the web with the given frontier
+        Crawls the web with the given frontier and saves the results to "data_files" folder
         :param frontier: The frontier of known URLs to crawl. You will initially populate this with
         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
         :param index_db: The location of the local index storing the discovered documents.
@@ -154,7 +154,6 @@ class FocusedWebCrawler:
         else:
             num_pages_crawled = max(index_db.keys()) + 1
 
-        user_agent = get_user_agent()
         # initialize priority queue and add seed urls
         sss = time.time()
         while not frontier.empty() and num_pages_crawled <= self.max_pages:
@@ -200,9 +199,7 @@ class FocusedWebCrawler:
 
             # Add the URL to the Visited links,
             self.visited.add(url)
-            # TODO: Page Priority one is only taken because many pages that are irrelevant
-            # Example: http://uli.nli.org.il/F/HM74MN1YKM7KYGP7KV882Y74M4DB45EIEPULCYI73KGS3G57HX-01577?func=full-set-set&set_number=011746&set_entry=000001&format=002
-            # http://uli.nli.org.il/F/HM74MN1YKM7KYGP7KV882Y74M4DB45EIEPULCYI73KGS3G57HX-01582?func=myshelf-add-ful-1&doc_library=NLX10&doc_number=000975756
+
             if page_priority is None or page_priority >= 2:
                 print(" THIS PAGE IS NOT RELEVANT!!! Continuing search")
                 print("________________________________________________________")
@@ -272,35 +269,33 @@ class FocusedWebCrawler:
         print(f"Index is: {self.index_db}")
         print(f"took time: {time.time() - sss}")
 
-    def index(self, url: str, key, content) -> None:
+    def index(self, url: str, key: int, content: str) -> None:
         """
         Add a document to the index. You need (at least) two parameters:
         :param url: The URL with which the document was retrieved
-        :param doc: The document to be indexed
-        :param index_db: The location of the local index storing the discovered documents.
-        :return:
+        :param key: Key of the document to be indexed
+        :param content: Content of the document to be indexed
         """
         length = len(content.split())
         self.index_db[key] = (url, length)
 
-    def index_embeddings(self, doc: str, key, pre=True) -> None:
+    def index_embeddings(self, doc: str, key: int, pre: bool = True) -> None:
         """
         Add a document embedding to the embedding index
         :param doc: The document to be indexed already preprocessed
         :param pre: True if text was preprocessed
-        :param key
+        :param key: Key of the document to be indexed
         """
         if pre:
             self.index_embeddings_pre_db[key] = self.embedder.embed(doc)
         else:
             self.index_embeddings_db[key] = self.embedder.embed(doc)
 
-    def inverted_index(self, doc: str, key) -> None:
+    def inverted_index(self, doc: str, key: int) -> None:
         """
         Add a document to the inverted index. You need (at least) two parameters:
         :param doc: The document to be indexed already preprocessed
-        :param key 
-        :return:
+        :param key Key of the docuemnt to be indexed
         """
         terms = doc.split()
         for position, term in enumerate(terms):
@@ -390,7 +385,8 @@ def send_get_request(url: str, max_retries: int = 1, retry_delay: float = 2) -> 
                         else:
                             raw_html_content = b""
                             raise Exception(
-                                f"Exception in GET request. The response status was not 200 OK but was {response.status}.")
+                                f"Exception in GET request. The response status was not 200 OK "
+                                f"but was {response.status}.")
                 except Exception as e:
                     error_str = f"Attempt {retry_count + 1} failed. "
                     if retry_count > 1:
@@ -513,7 +509,8 @@ def is_allowed(url: str, robots_content: str) -> bool:
     :param robots_content: content of the current robots.txt file
     :return: False if crawling the url is disallowed in robots, True otherwise
     """
-    # get the path of the url without base url ('http://www.example.com/hithere/something/else' -> /hithere/something/else)
+    # get the path of the url without base url
+    # e.g.: ('http://www.example.com/hithere/something/else' -> /hithere/something/else)
     path = urlparse(url).path
     # save rules relevant for the current user agent
     # user_agent_rules = []
@@ -554,17 +551,17 @@ def compute_similarity_hash(page_content: str, k: int = 5) -> str:
 
 def is_duplicate(content: str, previous_hashes, k: int = 5):
     """
-    Method that checks a document against an existing collection of previsouly seen documents for near duplicates
+    Method that checks a document against an existing collection of previously seen documents for near duplicates
     :param content: page content of the current page
     :param previous_hashes: contains the hash values of all pages that have been indexed before
-    :param k: threshold of bit difference that is neccessary to consider two documents duplicates
+    :param k: threshold of bit difference that is necessary to consider two documents duplicates
     :return: True if the current document is a duplicate of any previously indexed document, False otherwise
     """
     current_hash = compute_similarity_hash(content)
 
-    for hash in previous_hashes:
+    for hash_ in previous_hashes:
         bit_difference = np.sum(np.abs(
-            np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash]])))
+            np.array([int(bit) for bit in current_hash]) - np.array([int(bit) for bit in previous_hashes[hash_]])))
         if bit_difference <= k:
             return True
 
