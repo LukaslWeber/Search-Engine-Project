@@ -28,6 +28,7 @@ from utils import preprocessing
 from Embedder import Embedder
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
     save_index
+
 from fake_useragent import UserAgent
 
 ua = UserAgent()
@@ -48,6 +49,7 @@ user_agent_list = [
     ua.googlechrome,
     ua.edge
 ]
+
 
 
 def has_tuebingen(string_to_check: str) -> bool:
