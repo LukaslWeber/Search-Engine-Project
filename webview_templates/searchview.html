@@ -39,10 +39,10 @@
                                 </div>
                                 <div class="column control is-flex">
                                     <div class="select is-flex">
-                                        <select class="ranker-kind-select" id="ranker_select" name="ranker_select">
-                                            <option value="TF-IDF">TF-IDF</option>
-                                            <option value="BM25">BM-25</option>
-                                            <option value="Bert">Bert</option>
+                                        <select class="ranker-kind-select" id="ranker_select" name="ranker_select" class="update-on-select" value="{{ request.GET.ranker_select|default:'BM25' }">
+                                            <option {% if ranking_method == 'TF-IDF' %} selected {% endif %} value="TF-IDF">TF-IDF</option>
+                                            <option {% if ranking_method == 'BM25' %} selected {% endif %} value="BM25">BM-25</option>
+                                            <option {% if ranking_method == 'Bert' %} selected {% endif %} value="Bert">Bert</option>
                                         </select>
                                     </div>
                                 </div>
@@ -144,6 +144,7 @@
                 <form class="form" action="/search/" method="get" style="display:inline;">
                     <input type="hidden" name="queryField" value="{{ query }}">
                     <input type="hidden" name="start_index" value="{{ previous_start_index }}">
+                    <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
                     <button class="button is-link" type="submit">Show Previous 10 Results</button>
                 </form>
             {% endif %}
@@ -152,6 +153,7 @@
                 <form class="form" action="/search/" method="get" style="display: inline">
                     <input type="hidden" name="queryField" value="{{ query }}">
                     <input type="hidden" name="start_index" value="{{ start_index }}">
+                    <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
                     <button class="button is-link" type="submit">Show {{ remaining_elements }} More Results</button>
                 </form>
             {% endif %}
@@ -160,6 +162,22 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <<script>
+        // Function to update the input fields with the selected value
+        function updateInputs(selectedValue) {
+            // Get the input elements at the bottom
+            const inputElements = document.querySelectorAll('.update-on-select');
+            inputElements.forEach((input) => {
+                input.value = selectedValue;
+            });
+        }
+
+        // Event listener for the ranker_select dropdown
+        const rankerSelect = document.getElementById('ranker_select');
+        rankerSelect.addEventListener('change', function () {
+            const selectedValue = rankerSelect.value;
+            updateInputs(selectedValue); // Call the function to update the input fields
+        });
+
         function changeAllSpeeds(speed) {
         const audioPlayers = document.querySelectorAll('.audio-player');
         audioPlayers.forEach((player, index) => {

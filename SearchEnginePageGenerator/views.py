@@ -23,6 +23,7 @@ if not debug_mode:
                     embedding_index_path=embedding_index_path,
                     results_path=results_path)
 
+
 def get_title_and_text(website_url: str) -> Tuple[str, str]:
     raw_website_html_content = send_get_request(website_url)
     if raw_website_html_content != "" or raw_website_html_content != b"" or raw_website_html_content is not None:
@@ -39,7 +40,8 @@ def get_title_and_text(website_url: str) -> Tuple[str, str]:
         return website_title, website_text
     return "Website content could not be loaded", "Website content could not be loaded"
 
-def generate_audio_files(query : str, start_index : int, websites : List[str]) -> List[str]:
+
+def generate_audio_files(query: str, start_index: int, websites: List[Tuple[str, str, str]]) -> List[str]:
     audio_files = []
     audio_dir = "media"
     for f in os.listdir(audio_dir):
@@ -53,7 +55,8 @@ def generate_audio_files(query : str, start_index : int, websites : List[str]) -
         audio_files.append(audio_file_name)
     return audio_files
 
-def generate_titles_and_abstracts(websites : List[str]) -> List[Tuple[str, str, str]]:
+
+def generate_titles_and_abstracts(websites: List[str]) -> List[Tuple[str, str, str]]:
     results = []
     for ranked_website in websites:
         website_title, website_text = get_title_and_text(ranked_website)
@@ -62,6 +65,7 @@ def generate_titles_and_abstracts(websites : List[str]) -> List[Tuple[str, str, 
         abstract_text = website_text[:100]
         results.append((ranked_website, website_title, abstract_text))
     return results
+
 
 # Create your views here.
 def open_mainview(request):
@@ -103,24 +107,7 @@ def search(request):
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
+                             "https://theuselessweb.com/"
                              ]
         else:
             print("Generating ranking result")
@@ -136,7 +123,6 @@ def search(request):
         ranker_result = request.session['search_results']
 
     # Perform search operation based on the query
-
     start_index = int(request.GET.get('start_index', 0))
     limited_ranking_results_links = ranker_result[start_index: start_index + results_per_page]
     limited_results = generate_titles_and_abstracts(limited_ranking_results_links)
@@ -146,7 +132,8 @@ def search(request):
     show_previous = start_index >= results_per_page
     # Number of remaining elements
     remaining_elements = len(ranker_result) - (start_index + results_per_page)
-
+    if remaining_elements > results_per_page:
+        remaining_elements = results_per_page
 
     context = {
         'query': query,
@@ -155,7 +142,8 @@ def search(request):
         'show_more': show_more,
         'show_previous': show_previous,
         'remaining_elements': remaining_elements,
-        'audio_files': audio_files
+        'audio_files': audio_files,
+        'ranking_method': ranking_method
     }
     # print(f"Full results are: ")
     # print(results)
