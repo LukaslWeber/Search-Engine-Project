@@ -666,8 +666,7 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 # -----------------------------
 # just testing
 if __name__ == '__main__':
-    urls = ['https://en.wikipedia.org/wiki/W%C3%BCrttemberg-Hohenzollern',
-            'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+    urls = ['https://en.wikipedia.org/wiki/T%C3%BCbingen',
             'https://www.dzne.de/en/about-us/sites/tuebingen',
             'https://www.britannica.com/place/Tubingen-Germany',
             'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
