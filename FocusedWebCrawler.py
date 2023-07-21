@@ -23,16 +23,6 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
     save_index
 
 
-# TODO: Was mit deutschen Seiten die keinen englischen Content haben?
-#           --> Könnte man übersetzen Sicherstellen, dass wir auf der englischen Seite bleiben oder
-#           deutsche auf niedrigere PRIOO setzen --> Rufe detect_language auf und checke ob die Sprache en ist
-# DONE: Duplicate Detections
-# TODO: Nicht zu wenig zeit zwischen den Anfragen
-# TODO: vielleicht eine methode um den crawler zu resetten?
-# DONE: ROBOTS.TXT BEACHTEN
-# DONE: index beim neu laden
-
-
 def has_tuebingen(string_to_check: str) -> bool:
     """
     Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
