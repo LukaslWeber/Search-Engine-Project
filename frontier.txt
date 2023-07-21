@@ -1,6 +1,7 @@
 urls = ['https://uni-tuebingen.de/en/',
         'https://www.tuebingen.mpg.de/en',
         'https://www.tuebingen.de/en/',
+        'https://health-nlp.com/people/carsten.html'
         'https://allevents.in/tubingen/food-drinks',
         'https://www.dzne.de/en/about-us/sites/tuebingen',
         'https://www.britannica.com/place/Tubingen-Germany',
@@ -15,4 +16,15 @@ urls = ['https://uni-tuebingen.de/en/',
         'https://www.komoot.com/guide/210692/attractions-around-tuebingen',
         'https://bestplacesnthings.com/places-to-visit-tubingen-baden-wurttemberg-germany/,'
         'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/',
+        'https://www.tagblatt.de/Nachrichten/Was-geht-am-Wochenende-in-Tuebingen-595949.html',
+        'https://rp.baden-wuerttemberg.de/rpt/',
+        'https://www.germany.travel/en/cities-culture/tuebingen.html',
+        'https://www.tripadvisor.com/Tourism-g198539-Tubingen_Baden_Wurttemberg-Vacations.html',
+        'https://www.hih-tuebingen.de/en/?no_cache=1',
+        'https://www.tuebingen.mpg.de/en',
+        'https://tuebingenresearchcampus.com/',
+        'https://cyber-valley.de/en',
+        'https://www.bccn-tuebingen.de/',
+
+        ]
