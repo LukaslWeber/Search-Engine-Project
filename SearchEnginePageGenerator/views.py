@@ -13,11 +13,16 @@ lorem_ipsum = ""
 # index_embedding = os.path.join(path, 'embedding_index.joblib')
 # ranker = Ranker(index, index_inverted, index_embedding)
 
+def get_title_and_text(website:str):
+    return "not", "implemented"
+
 
 # Create your views here.
 def open_mainview(request):
     context = {}
-    request.session.clear()
+    # Delete potential previous session
+    request.session.pop('search_results', None)
+    request.session.pop('query', None)
     return render(request, 'mainview.html', context)
 
 
@@ -30,34 +35,44 @@ def search(request):
 
     # Check if the current query matches the stored query in the session
     stored_query = request.session.get('query', '')
+    stored_ranking_method = request.session.get('ranker', '')
     print(f"Stored Query is: {stored_query}")
-    if query != stored_query:
+    if query != stored_query or ranker != stored_ranking_method:
         # The query has changed, so remove the stored search results from the session
         request.session.pop('search_results', None)
+        request.session.pop('ranker', None)
 
     #Check if results are already stored in the session
-    if 'search_results' not in request.session:
+    if 'search_results' not in request.session or 'ranker' not in request.session:
         print("Generating results")
-        # TODO: results = ranker.rank(query, )
-        results = [("https://theuselessweb.com/", "title", "result 1 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 2 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 3 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 4 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 5 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 6 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 7 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 8 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 9 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 10 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 11 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 12 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 13 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 14 website text" + lorem_ipsum),
-                   ("https://theuselessweb.com/", "title", "result 15 website text" + lorem_ipsum)]
+        # TODO ranker_result = ranker.rank(query, )
+        # results = [("https://theuselessweb.com/", "title", "result 1 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 2 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 3 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 4 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 5 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 6 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 7 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 8 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 9 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 10 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 11 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 12 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 13 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 14 website text" + lorem_ipsum),
+        #            ("https://theuselessweb.com/", "title", "result 15 website text" + lorem_ipsum)]
+        ranker_result = ["https://en.wikipedia.org/wiki/University_of_T%C3%BCbingen",
+                         "https://en.wikipedia.org/wiki/T%C3%BCbingen"]
+        results = []
+        for ranked_website in ranker_result:
+            website_title, website_text = get_title_and_text(ranked_website)
+            results.append((ranked_website, website_title, website_text))
         # Store search results and query in the session
         request.session['search_results'] = results
         request.session['query'] = query
+        request.session['ranker'] = ranker
     else:
+        print("using old result")
         results = request.session['search_results']
 
     # Perform search operation based on the query
