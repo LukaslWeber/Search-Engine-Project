@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<section class="section">
+    <div class="container is-widescreen">
+        <h1 class="title">What do you want to search?</h1>
+        <h1 class="py-2 my-2"></h1>
+        <div class="columns is-centered">
+            <div class="column is-8">
+                <div class="has-text-centered" style="margin-bottom: -20px;">
+                    <img src="{% static 'tubingen.png' %}" alt="My Image" style="max-height: 800px; width: 200%;">
+                </div>
+                <form class="form" action="/search/" method="get">
+                    <div class="field is-grouped">
+                        <div class="control is-expanded">
+                            <input class="input is-large" type="text" id="queryField" name="queryField" placeholder="Enter your query">
+                        </div>
+
+                        <div class="control">
+                            <button class="button is-link is-large" type="submit">
+                                <span class="icon">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </button>
+                        </div>
+                        <div class="control is-flex">
+                            <div class="select-main-page is-flex">
+                                <select class="ranker-kind-select" id="ranker_select" name="ranker_select">
+                                    <option value="TF-IDF">TF-IDF</option>
+                                    <option value="BM-25">BM-25</option>
+                                    <option value="Bert">Bert</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <h1 class="py-6 my-6"></h1>
+        <h1 class="py-6 my-6"></h1>
+    </div>
+</section>
+{% endblock %}
