@@ -16,16 +16,21 @@ lorem_ipsum = ""
 
 # Create your views here.
 def open_mainview(request):
-    context = {'name': 'Lukas'}
+    context = {}
+    request.session.clear()
     return render(request, 'mainview.html', context)
 
 
 def search(request):
     query = str(request.GET.get('queryField'))
     print(f"Query is: {query}")
+    ranker = request.GET.get('ranker_select')
+    print(f"Selected ranker is: {ranker}")
+
 
     # Check if the current query matches the stored query in the session
     stored_query = request.session.get('query', '')
+    print(f"Stored Query is: {stored_query}")
     if query != stored_query:
         # The query has changed, so remove the stored search results from the session
         request.session.pop('search_results', None)
@@ -69,10 +74,10 @@ def search(request):
         os.remove(os.path.join(audio_dir,f))
     for i, result in enumerate(limited_results):
         website_text = result[2]
-        # tts = gTTS(text=website_text + "from_query" + query, lang="en")
+        tts = gTTS(text=website_text + "from_query" + query, lang="en")
         audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
-        # audio_path = os.path.join("media", audio_file_name)
-        # tts.save(audio_path)
+        audio_path = os.path.join("media", audio_file_name)
+        tts.save(audio_path)
         audio_files.append(audio_file_name)
 
 
@@ -86,7 +91,7 @@ def search(request):
         'remaining_elements': remaining_elements,
         'audio_files': audio_files
     }
-    print(f"Full results are: ")
-    print(results)
-    print(context)
+    # print(f"Full results are: ")
+    # print(results)
+    # print(context)
     return render(request, 'searchview.html', context)
