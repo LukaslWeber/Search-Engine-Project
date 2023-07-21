@@ -51,7 +51,6 @@ user_agent_list = [
 ]
 
 
-
 def has_tuebingen(string_to_check: str) -> bool:
     """
     Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
@@ -70,10 +69,11 @@ def has_tuebingen(string_to_check: str) -> bool:
     return False
 
 
-def has_tuebingen_content(string_to_check: str) -> bool:
+def has_tuebingen_content(url: str, string_to_check: str) -> bool:
     """
     Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
     The uppercase should be ignored here
+    :param url: url of the page to check
     :param string_to_check: The string that is to be checked
     :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
     """
@@ -82,7 +82,14 @@ def has_tuebingen_content(string_to_check: str) -> bool:
 
     pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
 
-    if len(matches) > 4 or pattern_location.search(string_to_check):
+    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):
+        threshold = 5
+        print("WIKIPEDIA IN URL FOUJD; THRESHOLD 5")
+    else:
+        threshold = 2
+        print("THRESHOLD 2")
+
+    if len(matches) >= threshold or pattern_location.search(string_to_check):
         return True
     else:
         return False
@@ -190,8 +197,9 @@ class FocusedWebCrawler:
                 continue
 
             # Check if "Tübingen" or "Tuebingen" is contained somewhere in the URL or document
-            contains_tuebingen = has_tuebingen(url) or has_tuebingen_content(
-                " ".join([page_header, page_content, page_footer]))
+            contains_tuebingen = has_tuebingen(url) or has_tuebingen_content(url,
+                                                                             " ".join([page_header, page_content,
+                                                                                       page_footer]))
             start = timeit.default_timer()
             page_language = self.detect_language(page_content)
             print(f" Detecting language took: {timeit.default_timer() - start:.2f}s")
@@ -671,17 +679,15 @@ def add_to_collection(url: str, page_content: str, filename: str) -> None:
 # -----------------------------
 # just testing
 if __name__ == '__main__':
-    urls = ['https://uni-tuebingen.de/en/',
-           'https://www.tuebingen.mpg.de/en',
-           'https://www.tuebingen.de/en/',
-           'https://en.wikipedia.org/wiki/T%C3%BCbingen',
-           'https://www.dzne.de/en/about-us/sites/tuebingen',
-           'https://www.britannica.com/place/Tubingen-Germany',
-           'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-           'https://wikitravel.org/en/T%C3%BCbingen',
-           'https://www.tasteatlas.com/local-food-in-tubingen',
-           'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-           'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
+    urls = [ 'https://en.wikipedia.org/wiki/W%C3%BCrttemberg-Hohenzollern',
+            'https://en.wikipedia.org/wiki/T%C3%BCbingen',
+            'https://www.dzne.de/en/about-us/sites/tuebingen',
+            'https://www.britannica.com/place/Tubingen-Germany',
+            'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+            'https://wikitravel.org/en/T%C3%BCbingen',
+            'https://www.tasteatlas.com/local-food-in-tubingen',
+            'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+            'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/']
 
     crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
     crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
