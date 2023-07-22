@@ -8,6 +8,9 @@ import torch
 import os
 from typing import Tuple
 class Embedder:
+    """
+    Class for creating the embedding of the documents using pretrained encoder models
+    """
     def __init__(self, model_name : str='roberta-base', max_length : int = 512):
         self.model_name = model_name
         if torch.cuda.is_available():
@@ -56,6 +59,11 @@ class Embedder:
         return total_embedding
     
     def tokenize(self, text : str) -> Tuple[ torch.tensor, torch.tensor]:
+        """
+        Tokenize the text into subwords and return the tokens and the attention_mask
+        :param text: the text to tokenize
+        :return: the tokens and the attention_mask
+        """
         encoded_input = self.tokenizer.tokenize(text)
         token_count = len(encoded_input)
         if token_count > self.max_length: # now token must be splitted up
@@ -75,8 +83,12 @@ class Embedder:
             bt_masks = tokenized_input['attention_mask'].to(self.device)
         return bt_inputs, bt_masks
     
-    def tokenize_roberta(self,text : str) -> np.array:
-        
+    def tokenize_roberta(self,text : str) -> Tuple[ torch.tensor, torch.tensor]:
+        """
+        Tokenize the text into subwords and return the tokens and the attention_mask for the roberta model
+        :param text: the text to tokenize
+        :return: the tokens and the attention_mask
+        """
         token_count = len(self.tokenizer.tokenize(text))
         if token_count > self.max_length: # now token must be splitted up
             split = math.ceil(token_count/self.max_length)
@@ -125,17 +137,3 @@ if __name__ == '__main__':
     Etiam porttitor, lacus ut suscipit scelerisque, mauris felis iaculis velit, nec ultricies tortor urna ut enim. Nam varius vulputate velit ac volutpat. Nunc finibus enim felis, sit amet ullamcorper justo pharetra id. Nam vehicula metus sit amet tortor luctus viverra. Morbi ac felis non lacus egestas posuere. Proin blandit finibus nunc, eu condimentum dui pulvinar eu. Aenean ultrices nulla vitae eros tristique scelerisque. Fusce a est vel mi fermentum blandit. Vivamus tincidunt ultricies bibendum. Nunc pulvinar purus eget lacus aliquam, eget ullamcorper est dictum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Sed in finibus dolor. Sed id scelerisque purus, eu semper ligula. Aliquam gravida ullamcorper purus, nec sollicitudin neque dictum non.
     '''
     text = preprocessing(text)
-    print('finished preprocessing')
-    path = 'data_files'
-    e = embedder.embed(text)
-    print(e.shape)
-    #embedding = embedder.embed(text)
-    #embed = np.zeros((21, 768))
-    #index = os.path.join(path, 'temp_forward_index.joblib')
-    #db = load_index(index)
-    #for key,value in db.items():
-    #    print(value[1])
-    #    text = preprocessing(value[1])
-    #    embed[key] = embedder.embed(text)
-    #np.save(os.path.join(path, 'temp_embed_bert_base_uncased_preprocessing.npy'), embed)
-    #print(embedding.shape)
