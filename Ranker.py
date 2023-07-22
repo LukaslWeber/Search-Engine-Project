@@ -9,6 +9,9 @@ from typing import Tuple
 #Class for doing the ranking of the documents
 
 class Ranker:
+    """
+    Class using different ranking methods to return the top k documents for a given query
+    """
     def __init__(self, index_path: str, inverted_index_path:str, embedding_index_path: str, results_path: str, relevant_docs_count: int=100, ):
         self.index_db = load_index(index_path)
         self.inverted_index_db = load_index(inverted_index_path)
@@ -26,6 +29,7 @@ class Ranker:
         self.b = 0.75
         self.k1 = 1.2
         self.calculate_avgdl() #TODO: calculate the average document length
+        self.rank_methods = ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]
 
 
     def calculate_avgdl(self):
@@ -55,21 +59,24 @@ class Ranker:
             return False
 
     def rank(self, query: str) -> list:
-        #TODO how to get the relevant documents for TD-IDF
-        #just use and 
+        """
+        Rank the documents for the given query using the set ranking method
+        :param query: the query string
+        :return: the list of the top k documents as a list of tuples (url, score)
+        """
 
-        if self.rank_method == "embedding":
+        if self.rank_method == "Feature_embedding":
             sorted_docs = self.embedding_ranking(query)
         else:
             relevant_docs = self.query_union(query)
-            if self.rank_method == "mergev2":
+            if self.rank_method == "Merge":
                 sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)
                 sorted_docs_BM25 = self.BM25(query, relevant_docs)
                 merged_list = sorted_docs_tf_idf[:5]
                 sorted_docs_tf_idf.extend(sorted_docs_BM25[:5])
                 sorted_docs_pseudo_relevance = self.pseudo_relevance_feedback_embedding(merged_list, mode='distance')
                 sorted_docs = self.merge_rankings(sorted_docs_tf_idf, sorted_docs_BM25, sorted_docs_pseudo_relevance)
-            if self.rank_method == "pseudo_relevance_feedback_embedding":
+            if self.rank_method == "Pseudo_relevance_feedback":
                 sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)[:5]
                 sorted_docs_BM25 = self.BM25(query, relevant_docs)[:5]
                 sorted_docs_tf_idf.extend(sorted_docs_BM25)
@@ -315,7 +322,7 @@ class Ranker:
         file_path = os.path.join(self.results_path, file_name)
         with open(file_path, "w") as f:
             for i,result in enumerate(results):
-                f.write(str(i) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
+                f.write(str(i+1) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
         
 
 
