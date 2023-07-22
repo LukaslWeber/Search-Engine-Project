@@ -5,6 +5,7 @@ import numpy as np
 import os
 import re
 from difflib import SequenceMatcher
+from typing import Tuple
 #Class for doing the ranking of the documents
 
 class Ranker:
@@ -96,6 +97,12 @@ class Ranker:
         return url_domain
 
     def gain(self,url, urls, websites):
+        """
+        Calculate the gain if an url is added to the resultlist
+        :param url: the url to check
+        :param urls: the list of websites already in the resultlist
+        :param websites: the dictionary of websites and their urls
+        """
         url_domain = self.get_url(url)
         if url_domain not in urls:
             gain = 10 #TODO finetuning
@@ -107,7 +114,18 @@ class Ranker:
             gain = (1-average_similarity) * 10/len(other_website_urls) #TODO finetuning
         return gain
     
-    
+    def find_new_documents(self, sorted_docs:list, pointer:int, added_pages:list) -> Tuple[int, str]:
+        """
+        Find pointer for a new document that is not already in the list
+        :param sorted_docs: the list of the top k documents
+        :param pointer: the current pointer
+        :param added_pages: the list of already added pages
+        :return: the new pointer and the url of the new document
+        """
+        while self.index_db[sorted_docs[pointer][0]][0] in added_pages:
+            pointer += 1
+        return pointer, self.index_db[sorted_docs[pointer][0]][0]        
+
 
     def merge_rankings(self, sorted_docs1: list, sorted_docs2: list, sorted_docs3: list) -> list:
         """
@@ -117,10 +135,10 @@ class Ranker:
         :param sorted_docs3: the list of the top k documents for the third method (pseudo relevance feedback)
         :return: the list of the top k documents after the merging
         """
-        #TODO
         merged_ranking = []
         urls = []
         websites ={}
+        added_pages =[]
         tf_idf_factor = 0.5
         bm25= tf_idf_factor =1
         pseudo_relevance_factor = 10
@@ -130,11 +148,11 @@ class Ranker:
         # naive merge take one with biggest increase
         for i in range(self.relevant_docs_count):
             #need to calculate the gain of each potenzial document
-            url1 = self.index_db[sorted_docs1[list1_pointer][0]][0]
-            url2 = self.index_db[sorted_docs2[list2_pointer][0]][0]
-            url3 = self.index_db[sorted_docs3[list3_pointer][0]][0]
+            list1_pointer, url1 = self.find_new_documents(sorted_docs1, list1_pointer, added_pages)
+            list2_pointer, url2 = self.find_new_documents(sorted_docs2, list2_pointer, added_pages)
+            list3_pointer, url3 = self.find_new_documents(sorted_docs3, list3_pointer, added_pages)
             list1_gain = self.gain(url1, urls, websites) + tf_idf_factor * sorted_docs1[list1_pointer][1]
-            list2_gain = self.gain(url2, urls, websites) + sorted_docs2[list2_pointer][1]
+            list2_gain = self.gain(url2, urls, websites) + bm25 * sorted_docs2[list2_pointer][1]
             list3_gain = self.gain(url3, urls, websites) + pseudo_relevance_factor / sorted_docs3[list3_pointer][1]
             print(url1, url2, url3)
             print(list1_gain, list2_gain, list3_gain)
@@ -143,6 +161,7 @@ class Ranker:
                 merged_ranking.append(sorted_docs1[list1_pointer])
                 list1_pointer += 1
                 url = self.get_url(url1)
+                added_pages.append(url1)
                 if url not in urls:
                     urls.append(url)
                 if url not in websites.keys():
@@ -154,6 +173,7 @@ class Ranker:
                 merged_ranking.append(sorted_docs2[list2_pointer])
                 list2_pointer += 1
                 url = self.get_url(url2)
+                added_pages.append(url2)
                 if url not in urls:
                     urls.append(url)
                 if url not in websites.keys():
@@ -165,6 +185,7 @@ class Ranker:
                 merged_ranking.append(sorted_docs3[list3_pointer])
                 list3_pointer += 1
                 url = self.get_url(url3)
+                added_pages.append(url3)
                 if url not in urls:
                     urls.append(url)
                 if url not in websites.keys():
