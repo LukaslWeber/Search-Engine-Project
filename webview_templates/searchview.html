@@ -156,24 +156,32 @@
             {% endfor %}
         </div>
 
-    {% if show_previous %}
-        <form class="form" action="/search/" method="get" style="display:inline;">
-            <input type="hidden" name="queryField" value="{{ query }}">
-            <input type="hidden" name="start_index" value="{{ previous_start_index }}">
-            <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
-            <button class="button is-link" type="submit">Show Previous 11 Results</button>
-        </form>
-    {% endif %}
+    
 
-    {% if show_more %}
-        <form class="form" action="/search/" method="get" style="display: inline">
-            <input type="hidden" name="queryField" value="{{ query }}">
-            <input type="hidden" name="start_index" value="{{ next_start_index }}">
-            <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
-            <button class="button is-link" type="submit">Show {{ remaining_elements }} More Results</button>
-        </form>
-    {% endif %}
+        
+        <div class="columns more-result-section is-centered">
+            <div class="button-container">
+                {% if show_previous %}
+                    <form class="form" action="/search/" method="get" style="display:inline;">
+                        <input type="hidden" name="queryField" value="{{ query }}">
+                        <input type="hidden" name="start_index" value="{{ previous_start_index }}">
+                        <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
+                        <button class="button is-link" type="submit">Show Previous 11 Results</button>
+                    </form>
+                {% endif %}
+            </div>
 
+            <div class="button-container">
+                {% if show_more %}
+                    <form class="form" action="/search/" method="get" style="display: inline">
+                        <input type="hidden" name="queryField" value="{{ query }}">
+                        <input type="hidden" name="start_index" value="{{ next_start_index }}">
+                        <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
+                        <button class="button is-link" type="submit">Show {{ remaining_elements }} More Results</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
 <!--scripts-->
