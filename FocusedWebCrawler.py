@@ -19,6 +19,11 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
 from Embedder import Embedder
 from utils import preprocessing
 
+"""
+This file describes the Web crawler. It is focused towards english documents which are related to Tübingen.
+"""
+
+# User-Agent list for pretending to be a real user when pages detect the crawler
 ua = UserAgent()
 user_agent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0'
@@ -37,74 +42,6 @@ user_agent_list = [
     ua.googlechrome,
     ua.edge
 ]
-
-
-def has_tuebingen(string_to_check: str) -> bool:
-    """
-    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
-    The uppercase should be ignored here
-    :param string_to_check: The string that is to be checked
-    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
-    """
-    tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
-    tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
-    tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
-
-    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(
-            string_to_check) or tuebingen_reg.search(string_to_check):
-        return True
-
-    return False
-
-
-def has_tuebingen_content(url: str, string_to_check: str) -> bool:
-    """
-    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" or "Tubingen" within
-    the content. The check is case-insensitive. An additional case has been introduced for wikipedia pages. They must
-    contain a form of Tübingen 5 or more times to be relevant as irrelevant Wikipedia pages often contain Tübingen
-    only once in their references.
-    :param url: url of the page to check
-    :param string_to_check: The string that is to be checked
-    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
-    """
-    pattern = r'(t(?:ü|ue|u)?binge[nr])'
-    matches = re.findall(pattern, string_to_check, re.IGNORECASE)
-
-    pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
-
-    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):  # Case for Wikipedia
-        threshold = 5
-    else:  # Case for all other pages
-        threshold = 3
-
-    print(f" threshold for checking occurences of Tübingen is: {threshold}")
-
-    if len(matches) >= threshold or pattern_location.search(string_to_check):
-        return True
-    else:
-        return False
-
-
-def get_priority(contains_tuebingen: bool, language: str) -> int or None:
-    """
-    Returns the priority of a document given the information if it contains Tübingen and its langauge
-    :param contains_tuebingen: bool, Parameter that indicates whether some form of
-    the word "Tübingen" is contained in the document
-    :param language: str, String that represents the abbreviation of the most used language in the document
-    :return: Integer indicating the priority where 1 is the highest and 4 is the lowest priority or None if
-    the document is not of relevance of any sort.
-    """
-    if contains_tuebingen and language == 'en':
-        return 1
-    elif contains_tuebingen and language == 'de':
-        return 2
-    elif language == 'en':
-        return 3
-    elif language == 'de':
-        return 4
-    else:
-        return None
-
 
 class FocusedWebCrawler:
     def __init__(self, max_pages: int = np.inf, frontier: List[str] = None):
@@ -584,6 +521,72 @@ def is_forbidden_file(url:str)->bool:
         if url.lower().endswith(ending):
             return True
     return False
+
+def has_tuebingen(string_to_check: str) -> bool:
+    """
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
+    The uppercase should be ignored here
+    :param string_to_check: The string that is to be checked
+    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
+    """
+    tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
+    tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
+    tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
+
+    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(
+            string_to_check) or tuebingen_reg.search(string_to_check):
+        return True
+
+    return False
+
+
+def has_tuebingen_content(url: str, string_to_check: str) -> bool:
+    """
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" or "Tubingen" within
+    the content. The check is case-insensitive. An additional case has been introduced for wikipedia pages. They must
+    contain a form of Tübingen 5 or more times to be relevant as irrelevant Wikipedia pages often contain Tübingen
+    only once in their references.
+    :param url: url of the page to check
+    :param string_to_check: The string that is to be checked
+    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
+    """
+    pattern = r'(t(?:ü|ue|u)?binge[nr])'
+    matches = re.findall(pattern, string_to_check, re.IGNORECASE)
+
+    pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
+
+    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):  # Case for Wikipedia
+        threshold = 5
+    else:  # Case for all other pages
+        threshold = 3
+
+    print(f" threshold for checking occurences of Tübingen is: {threshold}")
+
+    if len(matches) >= threshold or pattern_location.search(string_to_check):
+        return True
+    else:
+        return False
+
+
+def get_priority(contains_tuebingen: bool, language: str) -> int or None:
+    """
+    Returns the priority of a document given the information if it contains Tübingen and its langauge
+    :param contains_tuebingen: bool, Parameter that indicates whether some form of
+    the word "Tübingen" is contained in the document
+    :param language: str, String that represents the abbreviation of the most used language in the document
+    :return: Integer indicating the priority where 1 is the highest and 4 is the lowest priority or None if
+    the document is not of relevance of any sort.
+    """
+    if contains_tuebingen and language == 'en':
+        return 1
+    elif contains_tuebingen and language == 'de':
+        return 2
+    elif language == 'en':
+        return 3
+    elif language == 'de':
+        return 4
+    else:
+        return None
 
 
 # -----------------------------
