@@ -8,13 +8,10 @@
                 --turquoise:#266D7A;
                 --white-smoke:#F5F5F5;
                 --orange:#FF9944;
-                
-                {#--light-grey:;#}
                 --middle-grey:#525252;
                 --dark-grey:#363636;
                 --placeholder-text-color:#ADADAD;
             }
-
 
             body {
                 background-color: var(--dark-grey);
@@ -33,18 +30,106 @@
                 width: 100%;
             }
 
+            {#Change colors of all links#}
+            a {
+                color: var(--placeholder-text-color);
+            }
+
+            {#Formatting columns#}
+            .columns{
+                /*display:flex;*/
+                align-items: center;
+                background-color: var(--dark-grey);
+                padding: 0;
+                margin-left: 5rem;
+                margin-right: 5rem;
+            }
+
+            .is-flex-grow-1 {
+                flex: 1;
+            }
+            .column.is-8 {
+                margin: auto;
+            }
+            .subtitle.is-6{
+                font-weight: bold;
+            }
 
 
-            /*landing page css */
+            {#landing page css#}
             .title, .label, .subtitle {
                 color: var(--white-smoke);
             }
 
+            {#set top padding above logo and search bar#}
+            .container, .search-container{
+                padding: 2rem;
+            }
+
+            {#Buttons#}
             .button.is-info, .button.is-link {
                 background-color: var(--turquoise); 
             }
 
-            /* Adjust the width of the .ranker-kind select to fit properly */
+            /*search icon*/
+            .button.is-link.is-large {
+                height: 3rem;
+                margin-left: 5px;
+            }
+            .button.is-info:hover, .button.is-link:hover {
+                background-color: var(--orange); /*
+                 Orange */
+            }
+
+            {#Input field or search bar#}
+            .input.is-large {
+                height: 3rem;
+            }
+            .input:focus {
+                border-color: var(--orange);
+                box-shadow: 0 0 0 0.5px var(--orange);
+            }
+            .field.has-addons {
+                display: flex;
+                align-items: stretch;
+                flex: 1;
+            }
+                        .input.is-expanded-field {
+                width: 500px;
+                overflow: scroll;
+            }
+            .input::placeholder {
+                color: var(--placeholder-text-color); /* Placeholder Text Color */
+            }
+            {#Dropdown for input field#}
+            .dropdown-container{
+                display:flex;
+                justify-content: flex-end;
+            }
+
+            {#Image logo#}
+            .logo img{
+            width: 200%;
+            height: 200%;
+            }
+
+            .logo_image_div {
+                align-content: baseline;
+            }
+
+
+            {#Selects #}
+            .ranker-kind-select{
+                max-width: 100px
+            }
+            .ranker-kind-select_searchview{
+                max-width: 150px;
+            }
+            .select-search-page {
+                width: 100%;
+                flex: 1;
+                align-items: stretch;
+            }
             .select select {
                     background-color: var(--turquoise);
                     color: var(--white-smoke);
@@ -52,9 +137,8 @@
                     border-radius: 0;
                     padding: 6px;
                     margin-left: 5px;
-                }
-
-            .select select:hover{
+            }
+            .select .select-main-page select:hover{
                 background-color: var(--orange);
             }
             .select select:focus{
@@ -70,19 +154,7 @@
                 color: var(--orange)
             }
 
-            /*search bar*/
-            .input.is-large {
-                height: 3rem;
-            }
-
-            /*search icon*/
-            .button.is-link.is-large {
-                height: 3rem;
-                margin-left: 5px;
-            }
-
-
-            /*drop down menu for ranker*/
+            {#Select for ranker field of Mainview #}
             .select-main-page select {
                     height: 3rem;
                     background-color: var(--turquoise);
@@ -109,64 +181,7 @@
                 color: var(--orange)
             }
 
-
-
-
-
-
-
-/*search view css */ 
-
-    /*logo*/
-            /*.logo{*/
-            /*margin-top: 2rem;*/
-            /*margin-bottom: -10px;*/
-
-            .logo img{
-            width: 200%;
-            height: 200%;
-            }
-
-
-    /*search bar*/
-            .input:focus {
-                border-color: var(--orange); 
-                box-shadow: 0 0 0 0.5px var(--orange); 
-            }
-
-            /*align search bar with buttons*/
-            .search-container {
-                display: flex;
-                align-items: stretch;
-            }
-            .column.control {
-                flex: 1;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .field.has-addons {
-                display: flex;
-                align-items: stretch;
-                flex: 1;
-            }
-            .select-search-page {
-                width: 100%;
-                flex: 1;
-                align-items: stretch;
-            }
-            .is-flex-grow-1 {
-                flex: 1;
-            }
-            .column.is-8 {
-                margin: auto;
-            }
-
-
-
-
-    /*choose ranker*/
-            /*drop down menu for ranker*/
+            {#Selector for ranking method in search page#}
             .select-search-page select {
                 height: 2.5rem;
                 background-color: var(--turquoise);
@@ -195,20 +210,9 @@
 
 
 
-    /*search result box*/
-            .columns{
-                /*display:flex;*/
-                align-items: center;
-                background-color: var(--dark-grey);
-                padding: 0;
-                margin-left: 5rem;
-                margin-right: 5rem;
-            }
 
-            /*set top padding above logo and search bar**/
-            .container, .search-container{
-                padding: 2rem;
-            }
+
+
 
             /*wrapper for same background-color for all results*/ 
             .search-result-section{
@@ -284,52 +288,6 @@
                 color: var(--orange);
             }
 
-
-    /*logo*/
-            .logo_image_div {
-                align-content: baseline;
-            }
-            
-
-
-
-
-
-
-    /*you searched for*/
-            .subtitle.is-6{
-                font-weight: bold;
-            }
-
-            a {
-                color: var(--placeholder-text-color);
-            }
-
-            .button.is-info:hover, .button.is-link:hover {
-                background-color: var(--orange); /*
-                 Orange */
-            }
-
-
-            .input.is-expanded-field {
-                width: 500px;
-                overflow: scroll;
-            }
-
-            .dropdown-container{
-                display:flex;
-                justify-content: flex-end;
-            }
-
-            .input::placeholder {
-                color: var(--placeholder-text-color); /* Placeholder Text Color */
-            }
-
-            .dropdown-content{
-                background-color: var(--dark-grey);
-            }
-
-
             /*Dropdown content for the dropdown that changes all speeds*/
             .dropdown-content select{
                 background-color: var(--turquoise);
@@ -338,11 +296,9 @@
                 border-radius: 4px;
                 padding: 6px;
             }
-
             .dropdown-content select:hover{
                 background-color: var(--orange);
             }
-
             .dropdown-content select:focus{
                 background-color: var(--turquoise);
                 color: var(--white-smoke);
@@ -352,11 +308,9 @@
                 border-radius: 4px;
                 padding: 6px;
             }
-
             .dropdown-content select.option:focus{
                 color: var(--orange);
             }
-
             /* Change speed option background color when hovered */
             .dropdown-content option:hover{
                 color: var(--orange);
