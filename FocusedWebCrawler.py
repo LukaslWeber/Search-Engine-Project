@@ -139,10 +139,7 @@ class FocusedWebCrawler:
             # Add the URL to the Visited links,
             self.visited.add(url)
 
-            if page_priority is None or page_priority >= 2:
-                print(" THIS PAGE IS NOT RELEVANT!!! Continuing search")
-                print("________________________________________________________")
-                continue
+
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
                 if not (link in self.visited):
@@ -154,6 +151,11 @@ class FocusedWebCrawler:
                     print(f" The URL has already been visited. Skipping:{link}")
             # Add the URL and page content to the index
 
+            if page_priority is None or page_priority >= 2:
+                print(" THIS PAGE IS NOT RELEVANT!!! Continuing search")
+                print("________________________________________________________")
+                continue
+                
             # duplicate detection
             if is_duplicate(page_content, self.hashvalues):
                 continue
