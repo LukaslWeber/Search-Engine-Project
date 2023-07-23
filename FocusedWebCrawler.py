@@ -38,7 +38,6 @@ user_agent_list = [
     ua.edge
 ]
 
-forbidden_file_endings = [".jpg", ".png", ".jpeg", ".jpf", ".ppt", ".pptx"]
 
 def has_tuebingen(string_to_check: str) -> bool:
     """
@@ -145,7 +144,6 @@ class FocusedWebCrawler:
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         # self.identifier.set_languages(['de', 'en', 'fr'])
 
-
     def crawl(self, frontier: PriorityQueue, index_db):
         """
         Crawls the web with the given frontier and saves the results to "data_files" folder
@@ -244,7 +242,6 @@ class FocusedWebCrawler:
                     temp_simhash_path = "temp_simhash.joblib"
                     temp_visited_path = "temp_visited_pages.json"
                     temp_frontier_path = "temp_frontier_pages.joblib"
-
 
                     # Save to temporary files
                     save_index(temp_index_path, self.index_db)
@@ -575,6 +572,18 @@ def is_duplicate(content: str, previous_hashes, k: int = 5):
 
     return False
 
+
+def is_forbidden_file(url:str)->bool:
+    """
+    Checks if the url is a file. If yes, the URL should not be loaded as it is not a HTML document.
+    :param url: String definining the url
+    :return: True if it is forbidden, False if it is okay (HTML document that can be parsed with bs4)
+    """
+    forbidden_file_endings = [".jpg", ".png", ".jpeg", ".pdf", ".ppt", ".pptx"]
+    for ending in forbidden_file_endings:
+        if url.lower().endswith(ending):
+            return True
+    return False
 
 
 # -----------------------------
