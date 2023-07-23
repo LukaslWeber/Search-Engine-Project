@@ -3,55 +3,52 @@
 {% block content %}
 <!--<section class="section">-->
     <!--this is the top row with the picture and the search bar as well as the buttons-->
-    <div class="container is-widescreen">
-        <div class="columns">
-            <div class="column logo_image_div" style="float: left;">
-                <div class="logo" href="{% url 'startpage' %}"><!--TODO link to startpage from logo-->
-                    <img src="{% static 'tubingen-bing.png' %}" alt="Logo of TüBing" style="max-height: 120px;">
-                </div>
-            </div>
-            <div class="column search-container is-8">
-                    <div class="buttons is-centered">
-                        <div class="field has-addons">
-                            <form class="columns form control is-flex is-align-items-stretch" action="/search/" method="get">
-                                    <!--return to start page button-->
-                                    <div class="column is-flex is-align-items-stretch">
-                                        <a class="button is-info" href="{% url 'startpage' %}">
-                                            <span class="icon">
-                                                <i class="fas fa-arrow-left"></i>
-                                            </span>
-                                        </a>
-                                    </div>
-                                    <!--search bar-->
-                                    <div class="column field is-flex is-align-items-stretch is-flex-grow-1">
-                                        <div class="control is-expanded">
-                                            <input class="input is-expanded-field" type="text" id="queryField" name="queryField" value="{{ query }}">
-                                        </div>
-                                    </div>
-                                    <!--search button-->
-                                    <div class="column control">
-                                        <button class="button is-link" type="submit" style="border-radius: 4px">
-                                            <span class="icon">
-                                                <i class="fas fa-search"></i>
-                                            </span>
-                                        </button>
-                                    </div>
-                                    <!--select ranker-->
-                                    <div class="column select-search-page is-flex-grow-1">
-                                        <select class="ranker-kind-select" id="ranker_select" name="ranker_select" class="update-on-select" value="{{ request.GET.ranker_select|default:'BM25'}}">
-                                            <option {% if ranking_method == 'TF-IDF' %} selected {% endif %} value="TF-IDF">TF-IDF</option>
-                                            <option {% if ranking_method == 'BM25' %} selected {% endif %} value="BM25">BM-25</option>
-                                            <option {% if ranking_method == 'Feature_embedding' %} selected {% endif %} value="Feature_embedding">Feature-based</option>
-                                            <option {% if ranking_method == 'Pseudo_relevance_feedback' %} selected {% endif %} value="Pseudo_relevance_feedback">Pseudo-relevance feedback</option>
-                                            <option {% if ranking_method == 'Merge' %} selected {% endif %} value="Merge">Mixture</option>
-                                        </select>
-                                    </div>
-                            </form>
-                        </div>
-                    </div>
+    <div class="row">
+        <div class="column" style="float: left; margin-left: 30px">
+            <div class="logo">
+                <a href="{% url 'startpage' %}">
+                    <img src="{% static 'tubingen-bing-cropped.png' %}" alt="Logo of TüBing" style="max-height: 100%; max-width: 100%; width:auto; height:auto;">
+                </a>
             </div>
         </div>
-    </div> 
+        <div class="column is-flex is-align-items-center">
+            <form class="columns" action="/search/" method="get">
+                <!--return to start page button-->
+                <div class="column">
+                    <a class="button is-info" href="{% url 'startpage' %}">
+                        <span class="icon">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                    </a>
+                </div>
+                <!--search bar-->
+                <div class="column">
+                    <input class="input is-expanded-field" type="text" id="queryField" name="queryField" value="{{ query }}">
+                </div>
+                <!--select ranker-->
+                <div class="column select-search-page">
+                    <select class="ranker-kind-select_searchview" id="ranker_select" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25'}}">
+                        <option {% if ranking_method == 'TF-IDF' %} selected {% endif %} value="TF-IDF">TF-IDF</option>
+                        <option {% if ranking_method == 'BM25' %} selected {% endif %} value="BM25">BM-25</option>
+                        <option {% if ranking_method == 'Feature_embedding' %} selected {% endif %} value="Feature_embedding">Feature-based</option>
+                        <option {% if ranking_method == 'Pseudo_relevance_feedback' %} selected {% endif %} value="Pseudo_relevance_feedback">Pseudo-relevance feedback</option>
+                        <option {% if ranking_method == 'Merge' %} selected {% endif %} value="Merge">Mixture</option>
+                    </select>
+                </div>
+                <!--search button-->
+                <div class="column">
+                    <button class="button is-link" type="submit" style="border-radius: 4px">
+                        <span class="icon">
+                            <i class="fas fa-search"></i>
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
 
 
     <!--This is the next row of the page: you searched for and change all playback speeds-->
@@ -60,7 +57,7 @@
             <h4 class="subtitle is-6">You searched for: {{ query }}</h4>
         </div>
         <div class="column">
-            <div class="control is-expanded dropdown-container">
+            <div class="is-expanded dropdown-container">
                 <div class="dropdown-content">
                     <label><b>Change all</b> playback speeds: </label>
                     <select id="speedchange_all" onchange="changeAllSpeeds(this.value)">
