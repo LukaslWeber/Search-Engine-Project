@@ -19,6 +19,7 @@ from File_loader import load_frontier, load_visited_pages, load_index, save_fron
 from Embedder import Embedder
 from utils import preprocessing
 import argparse
+
 """
 This file describes the Web crawler. It is focused towards english documents which are related to Tübingen. 
 """
@@ -42,6 +43,7 @@ user_agent_list = [
     ua.googlechrome,
     ua.edge
 ]
+
 
 class FocusedWebCrawler:
     def __init__(self, max_pages: int = np.inf, frontier: List[str] = None):
@@ -139,7 +141,6 @@ class FocusedWebCrawler:
             # Add the URL to the Visited links,
             self.visited.add(url)
 
-
             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
             for link in page_links:
                 if not (link in self.visited):
@@ -155,7 +156,7 @@ class FocusedWebCrawler:
                 print(" THIS PAGE IS NOT RELEVANT!!! Continuing search")
                 print("________________________________________________________")
                 continue
-                
+
             # duplicate detection
             if is_duplicate(page_content, self.hashvalues):
                 continue
@@ -512,7 +513,7 @@ def is_duplicate(content: str, previous_hashes, k: int = 5):
     return False
 
 
-def is_forbidden_file(url:str)->bool:
+def is_forbidden_file(url: str) -> bool:
     """
     Checks if the url is a file. If yes, the URL should not be loaded as it is not a HTML document.
     :param url: String definining the url
@@ -523,6 +524,7 @@ def is_forbidden_file(url:str)->bool:
         if url.lower().endswith(ending):
             return True
     return False
+
 
 def has_tuebingen(string_to_check: str) -> bool:
     """
@@ -595,115 +597,115 @@ def get_priority(contains_tuebingen: bool, language: str) -> int or None:
 # just testing
 if __name__ == '__main__':
     urls = ['https://uni-tuebingen.de/en/',
-        'https://www.tuebingen.mpg.de/en',
-        'https://www.tuebingen.de/en/',
-        'https://health-nlp.com/people/carsten.html'
-        'https://allevents.in/tubingen/food-drinks',
-        'https://www.dzne.de/en/about-us/sites/tuebingen',
-        'https://www.britannica.com/place/Tubingen-Germany',
-        'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
-        'https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen',
-        'https://wikitravel.org/en/T%C3%BCbingen',
-        'https://www.tasteatlas.com/local-food-in-tubingen',
-        'https://velvetescape.com/things-to-do-in-tubingen/',
-        'https://thespicyjourney.com/magical-things-to-do-in-tubingen-in-one-day-tuebingen-germany-travel-guide/,'
-        'https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen',
-        'https://www.outdooractive.com/en/places-to-eat-drink/tuebingen/eat-drink-in-tuebingen/21873363',
-        'https://www.komoot.com/guide/210692/attractions-around-tuebingen',
-        'https://bestplacesnthings.com/places-to-visit-tubingen-baden-wurttemberg-germany/,'
-        'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
-        'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/',
-        'https://www.tagblatt.de/Nachrichten/Was-geht-am-Wochenende-in-Tuebingen-595949.html',
-        'https://rp.baden-wuerttemberg.de/rpt/',
-        'https://www.germany.travel/en/cities-culture/tuebingen.html',
-        'https://www.tripadvisor.com/Tourism-g198539-Tubingen_Baden_Wurttemberg-Vacations.html',
-        'https://www.hih-tuebingen.de/en/?no_cache=1',
-        'https://www.tuebingen.mpg.de/en',
-        'https://tuebingenresearchcampus.com/',
-        'https://cyber-valley.de/en',
-        'https://www.bccn-tuebingen.de/',
-        'https://www.delicious-food-and-drinks.de/?language=de',
-        'https://www.instyle.de/lifestyle/food-drinks',
-        'https://www.yfood.eu',
-        'https://www.tripadvisor.de/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        'https://velvetescape.com/things-to-do-in-tubingen/',
-        'https://justinpluslauren.com/things-to-do-in-tubingen-germany/',
-        'https://de.wikipedia.org/wiki/University',
-        'https://www.uni-hamburg.de',
-        'https://uni-tuebingen.de',
-        'https://www.medizin.uni-tuebingen.de/en-de/das-klinikum',
-        'https://www.medizin.uni-tuebingen.de/en-de/startseite',
-        'https://bookinghealth.com/university-hospital-tuebingen',
-        'https://www.eventbrite.de/d/germany--tübingen/parties/',
-        'https://www.tuebingen-info.de/de/sehenswuerdigkeiten',
-        'https://www.tripadvisor.de/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
-        'https://viel-unterwegs.de/reiseziele/deutschland/baden-wuerttemberg/tuebingen-sehenswuerdigkeiten/',
-        'https://www.tuebingen-info.de/veranstaltungen/tuebinger-stocherkahnrennen-be17d361c0',
-        'https://de.wikipedia.org/wiki/Stocherkahnrennen',
-        'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/stocherkahn-rennen-in-tuebingen-100.htm',
-        'https://www.tripadvisor.de/Attractions-g187275-Activities-c26-t143-Germany.html',
-        'https://www.yelp.com/search?cflt=shoppingcenters&find_loc=Stuttgart%2C+Baden-Württemberg',
-        'https://www.tripadvisor.de/Restaurants-g198539-c11-Tubingen_Baden_Wurttemberg.html',
-        'https://www.11880.com/suche/china-restaurant/tuebingen',
-        'https://de.restaurantguru.com/chinese-Tubingen-c20',
-        'https://www.tuebingen.de/palmer',
-        'https://www.tuebingen-info.de/de/tuebinger-flair/die-tuebinger-altstadt',
-        'https://www.unimuseum.uni-tuebingen.de/de/schloss-hohentuebingen',
-        'https://de.wikipedia.org/wiki/Schloss_Hohentübingen',
-        'https://www.tuebingen-info.de/attraktion/schloss-hohentuebingen-5180385e2e',
-        'https://de.wikipedia.org/wiki/Stift_(Kirche)',
-        'https://www.stiftskirche-tuebingen.de',
-        'https://www.stiftskirche.de',
-        'https://hoelderlinturm.de/',
-        'https://www.tuebingen-info.de/attraktion/cotta-haus-f69a9620bd',
-        'https://www.goethe.de/de/index.html',
-        'https://uni-tuebingen.de/einrichtungen/zentrale-einrichtungen/botanischer-garten/',
-        'https://de.wikipedia.org/wiki/Neckar',
-        'https://www.iksr.org/de/themen/rhein/teileinzugsgebiete/neckar',
-        'https://www.reisetipps-europa.de/51_Reisefuehrer/7_Reisefuehrer_D_Neckar.html',
-        'https://www.tuebingen.de',
-        'https://www.rhenania-tuebingen.de/universitaetsstadt-tuebingen/',
-        'https://uni-tuebingen.de/einrichtungen/personalvertretungen-beratung-beauftragte/lageplaene/karte-b-wilhelmstrasse-talkliniken/neue-aula/',
-        'https://de.wikipedia.org/wiki/Neue_Aula_Tübingen',
-        'https://www.tuepedia.de/wiki/Neue_Aula',
-        'https://www.tuebingen-info.de/de/veranstaltungen#/event',
-        'https://www.eventbrite.com/d/germany--tübingen/events/',
-        'https://www.tuebingen.de/109.html',
-        'https://www.unimuseum.uni-tuebingen.de/de/',
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-c49-Tubingen_Baden_Wurttemberg.html',
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-c57-Tubingen_Baden_Wurttemberg.html',
-        'https://freizeitmonster.de/blog/parks-tuebingen',
-        'https://uni-tuebingen.de/en/fakultaeten/philosophische-fakultaet/fachbereiche/geschichtswissenschaft/fachbereich/',
-        'https://www.tuebingen.de/en/3328.html',
-        'https://en.wikipedia.org/wiki/Tübingen',
-        'https://www.german-way.com/travel-and-tourism/public-transport-in-germany/',
-        'https://www.accuweather.com/en/de/tübingen/72070/weather-forecast/167215',
-        'https://www.timeanddate.com/weather/germany/tuebingen/ext',
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-c20-Tubingen_Baden_Wurttemberg.html',
-        'https://www.yelp.com/search?cflt=bookstores&find_loc=Tübingen%2C+Baden-Württemberg',
-        'https://movingtostuttgart.com/english-books/',
-        'https://www.dw.com/de/themen/s-9077',
-        'https://www.euronews.com/news/europe/germany',
-        'https://allevents.in/tubingen',
-        'https://www.eventbrite.de/d/germany/business--events/local/',
-        'https://globaltravelescapades.com/things-to-do-in-tubingen-germany/',
-        'https://www.tripadvisor.com/Restaurants-g198539-Tubingen_Baden_Wurttemberg.html',
-        'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
-        'https://www.thefork.com/restaurants/tubingen-c561333',
-        'https://www.medizin.uni-tuebingen.de/en-de/das-klinikum/einrichtungen/kliniken/zahn-mund-und-kieferheilkunde',
-        'https://mhs-europe.tricare.mil/Clinics/Stuttgart-Army-Health-Clinic/Dental',
-        'https://www.facebook.com/StuttgartDentalClinic/',
-        'https://www.tripadvisor.com/Attractions-g198539-Activities-c61-Tubingen_Baden_Wurttemberg.html',
-        'https://www.germany.travel/en/nature-outdoor-activities/overview.html',
-        'https://www.outdooractive.com/en/outdoor-activities-companies/germany/outdoor-activities-companies-in-germany/21857893/',
-        'https://www.my-stuwe.de/mensa/',
-        'https://www.my-stuwe.de/en/refectory/refectory-shedhalle/',
-        'https://www.tuepedia.de/wiki/Shedhalle',
-        'https://www.my-stuwe.de/mensa/mensa-morgenstelle-tuebingen/',
-        'https://uni-tuebingen.de/einrichtungen/personalvertretungen-beratung-beauftragte/lageplaene/karte-a-morgenstelle/',
-        'https://de.wikipedia.org/wiki/Morgenstelle',
-        'https://www.bahnhof.de/en/tuebingen-hbf',
-    ]
+            'https://www.tuebingen.mpg.de/en',
+            'https://www.tuebingen.de/en/',
+            'https://health-nlp.com/people/carsten.html'
+            'https://allevents.in/tubingen/food-drinks',
+            'https://www.dzne.de/en/about-us/sites/tuebingen',
+            'https://www.britannica.com/place/Tubingen-Germany',
+            'https://tuebingenresearchcampus.com/en/tuebingen/general-information/local-infos/',
+            'https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen',
+            'https://wikitravel.org/en/T%C3%BCbingen',
+            'https://www.tasteatlas.com/local-food-in-tubingen',
+            'https://velvetescape.com/things-to-do-in-tubingen/',
+            'https://thespicyjourney.com/magical-things-to-do-in-tubingen-in-one-day-tuebingen-germany-travel-guide/,'
+            'https://wanderlog.com/list/geoCategory/199488/where-to-eat-best-restaurants-in-tubingen',
+            'https://www.outdooractive.com/en/places-to-eat-drink/tuebingen/eat-drink-in-tuebingen/21873363',
+            'https://www.komoot.com/guide/210692/attractions-around-tuebingen',
+            'https://bestplacesnthings.com/places-to-visit-tubingen-baden-wurttemberg-germany/,'
+            'https://www.citypopulation.de/en/germany/badenwurttemberg/t%C3%BCbingen/08416041__t%C3%BCbingen/',
+            'https://www.braugasthoefe.de/en/guesthouses/gasthausbrauerei-neckarmueller/',
+            'https://www.tagblatt.de/Nachrichten/Was-geht-am-Wochenende-in-Tuebingen-595949.html',
+            'https://rp.baden-wuerttemberg.de/rpt/',
+            'https://www.germany.travel/en/cities-culture/tuebingen.html',
+            'https://www.tripadvisor.com/Tourism-g198539-Tubingen_Baden_Wurttemberg-Vacations.html',
+            'https://www.hih-tuebingen.de/en/?no_cache=1',
+            'https://www.tuebingen.mpg.de/en',
+            'https://tuebingenresearchcampus.com/',
+            'https://cyber-valley.de/en',
+            'https://www.bccn-tuebingen.de/',
+            'https://www.delicious-food-and-drinks.de/?language=de',
+            'https://www.instyle.de/lifestyle/food-drinks',
+            'https://www.yfood.eu',
+            'https://www.tripadvisor.de/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+            'https://velvetescape.com/things-to-do-in-tubingen/',
+            'https://justinpluslauren.com/things-to-do-in-tubingen-germany/',
+            'https://de.wikipedia.org/wiki/University',
+            'https://www.uni-hamburg.de',
+            'https://uni-tuebingen.de',
+            'https://www.medizin.uni-tuebingen.de/en-de/das-klinikum',
+            'https://www.medizin.uni-tuebingen.de/en-de/startseite',
+            'https://bookinghealth.com/university-hospital-tuebingen',
+            'https://www.eventbrite.de/d/germany--tübingen/parties/',
+            'https://www.tuebingen-info.de/de/sehenswuerdigkeiten',
+            'https://www.tripadvisor.de/Attractions-g198539-Activities-Tubingen_Baden_Wurttemberg.html',
+            'https://viel-unterwegs.de/reiseziele/deutschland/baden-wuerttemberg/tuebingen-sehenswuerdigkeiten/',
+            'https://www.tuebingen-info.de/veranstaltungen/tuebinger-stocherkahnrennen-be17d361c0',
+            'https://de.wikipedia.org/wiki/Stocherkahnrennen',
+            'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/stocherkahn-rennen-in-tuebingen-100.htm',
+            'https://www.tripadvisor.de/Attractions-g187275-Activities-c26-t143-Germany.html',
+            'https://www.yelp.com/search?cflt=shoppingcenters&find_loc=Stuttgart%2C+Baden-Württemberg',
+            'https://www.tripadvisor.de/Restaurants-g198539-c11-Tubingen_Baden_Wurttemberg.html',
+            'https://www.11880.com/suche/china-restaurant/tuebingen',
+            'https://de.restaurantguru.com/chinese-Tubingen-c20',
+            'https://www.tuebingen.de/palmer',
+            'https://www.tuebingen-info.de/de/tuebinger-flair/die-tuebinger-altstadt',
+            'https://www.unimuseum.uni-tuebingen.de/de/schloss-hohentuebingen',
+            'https://de.wikipedia.org/wiki/Schloss_Hohentübingen',
+            'https://www.tuebingen-info.de/attraktion/schloss-hohentuebingen-5180385e2e',
+            'https://de.wikipedia.org/wiki/Stift_(Kirche)',
+            'https://www.stiftskirche-tuebingen.de',
+            'https://www.stiftskirche.de',
+            'https://hoelderlinturm.de/',
+            'https://www.tuebingen-info.de/attraktion/cotta-haus-f69a9620bd',
+            'https://www.goethe.de/de/index.html',
+            'https://uni-tuebingen.de/einrichtungen/zentrale-einrichtungen/botanischer-garten/',
+            'https://de.wikipedia.org/wiki/Neckar',
+            'https://www.iksr.org/de/themen/rhein/teileinzugsgebiete/neckar',
+            'https://www.reisetipps-europa.de/51_Reisefuehrer/7_Reisefuehrer_D_Neckar.html',
+            'https://www.tuebingen.de',
+            'https://www.rhenania-tuebingen.de/universitaetsstadt-tuebingen/',
+            'https://uni-tuebingen.de/einrichtungen/personalvertretungen-beratung-beauftragte/lageplaene/karte-b-wilhelmstrasse-talkliniken/neue-aula/',
+            'https://de.wikipedia.org/wiki/Neue_Aula_Tübingen',
+            'https://www.tuepedia.de/wiki/Neue_Aula',
+            'https://www.tuebingen-info.de/de/veranstaltungen#/event',
+            'https://www.eventbrite.com/d/germany--tübingen/events/',
+            'https://www.tuebingen.de/109.html',
+            'https://www.unimuseum.uni-tuebingen.de/de/',
+            'https://www.tripadvisor.com/Attractions-g198539-Activities-c49-Tubingen_Baden_Wurttemberg.html',
+            'https://www.tripadvisor.com/Attractions-g198539-Activities-c57-Tubingen_Baden_Wurttemberg.html',
+            'https://freizeitmonster.de/blog/parks-tuebingen',
+            'https://uni-tuebingen.de/en/fakultaeten/philosophische-fakultaet/fachbereiche/geschichtswissenschaft/fachbereich/',
+            'https://www.tuebingen.de/en/3328.html',
+            'https://en.wikipedia.org/wiki/Tübingen',
+            'https://www.german-way.com/travel-and-tourism/public-transport-in-germany/',
+            'https://www.accuweather.com/en/de/tübingen/72070/weather-forecast/167215',
+            'https://www.timeanddate.com/weather/germany/tuebingen/ext',
+            'https://www.tripadvisor.com/Attractions-g198539-Activities-c20-Tubingen_Baden_Wurttemberg.html',
+            'https://www.yelp.com/search?cflt=bookstores&find_loc=Tübingen%2C+Baden-Württemberg',
+            'https://movingtostuttgart.com/english-books/',
+            'https://www.dw.com/de/themen/s-9077',
+            'https://www.euronews.com/news/europe/germany',
+            'https://allevents.in/tubingen',
+            'https://www.eventbrite.de/d/germany/business--events/local/',
+            'https://globaltravelescapades.com/things-to-do-in-tubingen-germany/',
+            'https://www.tripadvisor.com/Restaurants-g198539-Tubingen_Baden_Wurttemberg.html',
+            'https://guide.michelin.com/en/de/baden-wurttemberg/tbingen/restaurants',
+            'https://www.thefork.com/restaurants/tubingen-c561333',
+            'https://www.medizin.uni-tuebingen.de/en-de/das-klinikum/einrichtungen/kliniken/zahn-mund-und-kieferheilkunde',
+            'https://mhs-europe.tricare.mil/Clinics/Stuttgart-Army-Health-Clinic/Dental',
+            'https://www.facebook.com/StuttgartDentalClinic/',
+            'https://www.tripadvisor.com/Attractions-g198539-Activities-c61-Tubingen_Baden_Wurttemberg.html',
+            'https://www.germany.travel/en/nature-outdoor-activities/overview.html',
+            'https://www.outdooractive.com/en/outdoor-activities-companies/germany/outdoor-activities-companies-in-germany/21857893/',
+            'https://www.my-stuwe.de/mensa/',
+            'https://www.my-stuwe.de/en/refectory/refectory-shedhalle/',
+            'https://www.tuepedia.de/wiki/Shedhalle',
+            'https://www.my-stuwe.de/mensa/mensa-morgenstelle-tuebingen/',
+            'https://uni-tuebingen.de/einrichtungen/personalvertretungen-beratung-beauftragte/lageplaene/karte-a-morgenstelle/',
+            'https://de.wikipedia.org/wiki/Morgenstelle',
+            'https://www.bahnhof.de/en/tuebingen-hbf',
+            ]
     # Create an argument parser
     parser = argparse.ArgumentParser(description="Crawler for TüBing Search Engine")
 
