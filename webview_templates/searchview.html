@@ -4,20 +4,18 @@
 <!--<section class="section">-->
     <!--this is the top row with the picture and the search bar as well as the buttons-->
     <div class="container is-widescreen">
-        <div class="columns is-centered">
-            <div class="column logo_image_div" >
+        <div class="columns">
+            <div class="column logo_image_div" style="float: left;">
                 <div class="logo" href="{% url 'startpage' %}"><!--TODO link to startpage from logo-->
-                    <img src="{% static 'tubingen-bing.png' %}" alt="My Image">
+                    <img src="{% static 'tubingen-bing.png' %}" alt="Logo of TüBing" style="max-height: 120px;">
                 </div>
             </div>
-            <div class="search-container">
-                <div class="column is-8">
+            <div class="column search-container is-8">
                     <div class="buttons is-centered">
                         <div class="field has-addons">
-                            <form class="columns form" action="/search/" method="get">
-                                <div class="column control is-flex is-align-items-stretch">
+                            <form class="columns form control is-flex is-align-items-stretch" action="/search/" method="get">
                                     <!--return to start page button-->
-                                    <div class="is-flex is-align-items-stretch">
+                                    <div class="column is-flex is-align-items-stretch">
                                         <a class="button is-info" href="{% url 'startpage' %}">
                                             <span class="icon">
                                                 <i class="fas fa-arrow-left"></i>
@@ -25,32 +23,32 @@
                                         </a>
                                     </div>
                                     <!--search bar-->
-                                    <div class="field is-flex is-align-items-stretch is-flex-grow-1">
+                                    <div class="column field is-flex is-align-items-stretch is-flex-grow-1">
                                         <div class="control is-expanded">
                                             <input class="input is-expanded-field" type="text" id="queryField" name="queryField" value="{{ query }}">
                                         </div>
                                     </div>
                                     <!--search button-->
-                                    <div class="control">
-                                        <button class="button is-link" type="submit">
+                                    <div class="column control">
+                                        <button class="button is-link" type="submit" style="border-radius: 4px">
                                             <span class="icon">
                                                 <i class="fas fa-search"></i>
                                             </span>
                                         </button>
                                     </div>
                                     <!--select ranker-->
-                                    <div class="select-search-page is-flex-grow-1">
-                                        <select class="ranker-kind-select" id="ranker_select" name="ranker_select" class="update-on-select" value="{{ request.GET.ranker_select|default:'BM25' }">
+                                    <div class="column select-search-page is-flex-grow-1">
+                                        <select class="ranker-kind-select" id="ranker_select" name="ranker_select" class="update-on-select" value="{{ request.GET.ranker_select|default:'BM25'}}">
                                             <option {% if ranking_method == 'TF-IDF' %} selected {% endif %} value="TF-IDF">TF-IDF</option>
                                             <option {% if ranking_method == 'BM25' %} selected {% endif %} value="BM25">BM-25</option>
-                                            <option {% if ranking_method == 'Bert' %} selected {% endif %} value="Bert">BERT</option>
+                                            <option {% if ranking_method == 'Feature_embedding' %} selected {% endif %} value="Feature_embedding">Feature-based</option>
+                                            <option {% if ranking_method == 'Pseudo_relevance_feedback' %} selected {% endif %} value="Pseudo_relevance_feedback">Pseudo-relevance feedback</option>
+                                            <option {% if ranking_method == 'Merge' %} selected {% endif %} value="Merge">Mixture</option>
                                         </select>
                                     </div>
-                                </div>
                             </form>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
     </div> 
@@ -160,34 +158,31 @@
                 {% endfor %}
             {% endfor %}
         </div>
+
+    {% if show_previous %}
+        <form class="form" action="/search/" method="get" style="display:inline;">
+            <input type="hidden" name="queryField" value="{{ query }}">
+            <input type="hidden" name="start_index" value="{{ previous_start_index }}">
+            <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
+            <button class="button is-link" type="submit">Show Previous 11 Results</button>
+        </form>
+    {% endif %}
+
+    {% if show_more %}
+        <form class="form" action="/search/" method="get" style="display: inline">
+            <input type="hidden" name="queryField" value="{{ query }}">
+            <input type="hidden" name="start_index" value="{{ next_start_index }}">
+            <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
+            <button class="button is-link" type="submit">Show {{ remaining_elements }} More Results</button>
+        </form>
+    {% endif %}
+
     </div>
-
-
-
-{% if show_previous %}
-                <form class="form" action="/search/" method="get" style="display:inline;">
-                    <input type="hidden" name="queryField" value="{{ query }}">
-                    <input type="hidden" name="start_index" value="{{ previous_start_index }}">
-                    <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
-                    <button class="button is-link" type="submit">Show Previous 10 Results</button>
-                </form>
-            {% endif %}
-
-            {% if show_more %}
-                <form class="form" action="/search/" method="get" style="display: inline">
-                    <input type="hidden" name="queryField" value="{{ query }}">
-                    <input type="hidden" name="start_index" value="{{ start_index }}">
-                    <input type="hidden" name="ranker_select" value="{{ request.GET.ranker_select|default:'BM25' }}">
-                    <button class="button is-link" type="submit">Show {{ remaining_elements }} More Results</button>
-                </form>
-            {% endif %}
-
 
 <!--scripts-->
     <!--script for audio player-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <<script>
+    <script>
         // Function to update the input fields with the selected value
         function updateInputs(selectedValue) {
             // Get the input elements at the bottom
@@ -230,34 +225,26 @@
     <!--script to get max box size-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-    $(document).ready(function() {
-    // Calculate the maximum height among all the boxes
-    function setMaxHeight() {
-        var maxHeight = 0;
-        $('.search-result-container .box').each(function() {
-        var height = $(this).height();
-        if (height > maxHeight) {
-            maxHeight = height;
+        $(document).ready(function() {
+        // Calculate the maximum height among all the boxes
+        function setMaxHeight() {
+            var maxHeight = 0;
+            $('.search-result-container .box').each(function() {
+            var height = $(this).height();
+            if (height > maxHeight) {
+                maxHeight = height;
+            }
+            });
+            // Apply the maximum height to all the boxes
+            $('.search-result-container .box').height(maxHeight);
         }
-        });
-        // Apply the maximum height to all the boxes
-        $('.search-result-container .box').height(maxHeight);
-    }
 
-    // Call the setMaxHeight function on page load and when the window is resized
-    setMaxHeight();
-    $(window).resize(function() {
+        // Call the setMaxHeight function on page load and when the window is resized
         setMaxHeight();
-    });
-    });
+        $(window).resize(function() {
+            setMaxHeight();
+        });
+        });
     </script>
 
-
-    <!--script for slider-->
-    
-
-
-    
-
-<!--</section>-->
 {% endblock %}
