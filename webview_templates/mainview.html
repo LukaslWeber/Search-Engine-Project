@@ -8,7 +8,7 @@
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="text-center mb-4">
-                    <img src="{% static 'tubingen-bing.png' %}" alt="My Image" class="img-fluid">
+                    <img src="{% static 'tubingen-bing.png' %}" alt="Icon of the Search Engine" class="img-fluid">
                 </div>
                 <form class="form" action="/search/" method="get" onsubmit="return validateForm()">
                     <div class="input-group">
@@ -24,7 +24,9 @@
                                 <select class="form-control" id="ranker_select" name="ranker_select">
                                     <option value="TF-IDF">TF-IDF</option>
                                     <option value="BM25">BM-25</option>
-                                    <option value="Bert">BERT</option>
+                                    <option value="Feature_embedding">Feature-based</option>
+                                    <option value="Pseudo_relevance_feedback">Pseudo-relevance feedback</option>
+                                    <option value="Merge">Mixture</option>
                                 </select>
                             </div>
                         </div>
