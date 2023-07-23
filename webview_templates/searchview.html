@@ -85,8 +85,8 @@
         <!--first three results as one column-->
         <div class="columns is-multiline">
             {% for link, title, content in search_results|slice:"0:3" %}
-                {% for audio_file in audio_files %}
-                    {% if forloop.counter0 == forloop.parentloop.counter %}
+                {% for audio_file in audio_files|slice:"0:3" %}
+                    {% if forloop.counter0 == forloop.parentloop.counter0 %}
                         <div class="column is-full">
                             <div class="box has-background-grey-dark has-text-light has-border">
                                 <a href="{{ link }}" class="hover-link-white">
@@ -100,9 +100,9 @@
                                         </div>
                                         <div class="col-md-6">
                                             <div class="audio-player">
-                                                <audio src="/media/{{ audio_file}}" id="audio{{ forloop.parentloop.counter }}" controls></audio>
+                                                <audio src="/media/{{ audio_file}}" id="audio{{ forloop.parentloop.counter0 }}" controls></audio>
                                                 <label for="speed">Speed:</label>
-                                                <select id="speed" onchange="changePlaybackSpeed({{ forloop.parentloop.counter }}, this.value)">
+                                                <select id="speed" onchange="changePlaybackSpeed({{ forloop.parentloop.counter0 }}, this.value)">
                                                     <option value="1">1x</option>
                                                     <option value="1.25">1.25x</option>
                                                     <option value="1.5">1.5x</option>
@@ -126,8 +126,8 @@
         <div class="columns is-multiline">
  
             {% for link, title, content in search_results|slice:"3:11" %}
-                {% for audio_file in audio_files %}
-                    {% if forloop.counter0 == forloop.parentloop.counter %}
+                {% for audio_file in audio_files|slice:"3:11" %}
+                    {% if forloop.counter0 == forloop.parentloop.counter0 %}
                         <div class="column is-half">
                             <div class="search-result-container">
                             <div class="box has-background-grey-dark has-text-light has-border">
@@ -137,19 +137,20 @@
                                         <p>{{ content }}</p>
                                     </div>
                                     <p>Link: <a href="{{ link }}" class="hover-link-white">{{ link }}</a></p>
-
                                     <div class="audio-player">
-                                        <audio src="/media/{{ audio_file}}" id="audio{{ forloop.parentloop.counter }}" controls></audio>
-                                        <label for="speed">Speed:</label>
-                                        <select id="speed" onchange="changePlaybackSpeed({{ forloop.parentloop.counter }}, this.value)">
-                                            <option value="1">1x</option>
-                                            <option value="1.25">1.25x</option>
-                                            <option value="1.5">1.5x</option>
-                                            <option value="1.75">1.75x</option>
-                                            <option value="2">2x</option>
-                                            <option value="2.25">2.25x</option>
-                                            <option value="2.5">2.5x</option>
-                                        </select>
+                                        {% with counter_value=forloop.parentloop.counter0|add:3 %}
+                                            <audio src="/media/{{ audio_file }}" id="audio{{ counter_value }}" controls></audio>
+                                            <label for="speed">Speed:</label>
+                                            <select id="speed" onchange="changePlaybackSpeed({{ counter_value }}, this.value)">
+                                                <option value="1">1x</option>
+                                                <option value="1.25">1.25x</option>
+                                                <option value="1.5">1.5x</option>
+                                                <option value="1.75">1.75x</option>
+                                                <option value="2">2x</option>
+                                                <option value="2.25">2.25x</option>
+                                                <option value="2.5">2.5x</option>
+                                            </select>
+                                        {% endwith %}
                                     </div>
                                 </a>
                             </div>

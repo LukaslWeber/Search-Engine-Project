@@ -122,9 +122,9 @@ def search(request):
                              "https://en.wikipedia.org/wiki/T%C3%BCbingen",
                              "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
                              "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
@@ -148,9 +148,9 @@ def search(request):
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
                              "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
                              ]
         else:
             print("Generating ranking result")
