@@ -7,6 +7,11 @@ from django.http import HttpResponse
 from gtts.tts import gTTS
 from FocusedWebCrawler import send_get_request
 
+from pysummarization.nlpbase.auto_abstractor import AutoAbstractor
+from pysummarization.tokenizabledoc.simple_tokenizer import SimpleTokenizer
+from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstractor
+
+
 # Static variables
 results_per_page = 11
 
@@ -48,7 +53,7 @@ def generate_audio_files(query: str, start_index: int, websites: List[Tuple[str,
         os.remove(os.path.join(audio_dir, f))
     for i, result in enumerate(websites):
         link, title, website_text = result
-        tts = gTTS(text=f"Reading result {i + 1}. {title}. {website_text}", lang="en")
+        tts = gTTS(text=f"Reading result {i + 1}. {title}. {website_text} 'Please open the website for further information'", lang="en")
         audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
         audio_path = os.path.join("media", audio_file_name)
         tts.save(audio_path)
@@ -56,13 +61,31 @@ def generate_audio_files(query: str, start_index: int, websites: List[Tuple[str,
     return audio_files
 
 
-def generate_titles_and_abstracts(websites: List[str]) -> List[Tuple[str, str, str]]:
+def get_abstract(website_text):
+    # Object of automatic summarization.
+    auto_abstractor = AutoAbstractor()
+    # Set tokenizer.
+    auto_abstractor.tokenizable_doc = SimpleTokenizer()
+    # Set delimiter for making a list of sentence.
+    auto_abstractor.delimiter_list = [".", "\n"]
+    # Object of abstracting and filtering document.
+    abstractable_doc = TopNRankAbstractor()
+    # Summarize document.
+    result_dict = auto_abstractor.summarize(website_text, abstractable_doc)
+
+    result_string = ''.join(map(str, result_dict['summarize_result']))
+
+    return result_string
+
+
+def generate_titles_and_abstracts(websites : List[str]) -> List[Tuple[str, str, str]]:
     results = []
     for ranked_website in websites:
         website_title, website_text = get_title_and_text(ranked_website)
         # TODO: Max, hier kannst du den website_text umwandeln in ein abstact. Änder dazu einfach die
         # abstract_text variable ab.
-        abstract_text = website_text[:100]
+        #abstract_text = website_text[:100]
+        abstract_text = get_abstract(website_text)[:300] + '...' 
         results.append((ranked_website, website_title, abstract_text))
     return results
 
@@ -102,12 +125,32 @@ def search(request):
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             #"https://theuselessweb.com/",
+                             "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/"
                              ]
         else:
             print("Generating ranking result")

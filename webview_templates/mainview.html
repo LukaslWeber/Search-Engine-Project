@@ -2,42 +2,49 @@
 {% load static %}
 {% block content %}
 <section class="section">
-    <div class="container is-widescreen">
-        <h1 class="title">What do you want to search?</h1>
+    <div class="container">
+        <h1 class="title"></h1>
         <h1 class="py-2 my-2"></h1>
-        <div class="columns is-centered">
-            <div class="column is-8">
-                <div class="has-text-centered" style="margin-bottom: -20px;">
-                    <img src="{% static 'tubingen.png' %}" alt="My Image" style="max-height: 800px; width: 200%;">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-4">
+                    <img src="{% static 'tubingen-bing.png' %}" alt="My Image" class="img-fluid">
                 </div>
-                <form class="form" action="/search/" method="get">
-                    <div class="field is-grouped">
-                        <div class="control is-expanded">
-                            <input class="input is-large" type="text" id="queryField" name="queryField" placeholder="Enter your query">
-                        </div>
-
-                        <div class="control">
+                <form class="form" action="/search/" method="get" onsubmit="return validateForm()">
+                    <div class="input-group">
+                        <input class="form-control form-control-lg input is-large" type="text" id="queryField" name="queryField" placeholder="Enter your query">
+                        <div class="input-group-append">
                             <button class="button is-link is-large" type="submit">
                                 <span class="icon">
                                     <i class="fas fa-search"></i>
                                 </span>
-                            </button>
                         </div>
-                        <div class="control is-flex">
-                            <div class="select-main-page is-flex">
-                                <select class="ranker-kind-select" id="ranker_select" name="ranker_select" >
+                        <div class="input-group-append">
+                            <div class="select-main-page is large">
+                                <select class="form-control" id="ranker_select" name="ranker_select">
                                     <option value="TF-IDF">TF-IDF</option>
-                                    <option selected="selected" value="BM25">BM-25</option>
-                                    <option value="Bert">Bert</option>
+                                    <option value="BM25">BM-25</option>
+                                    <option value="Bert">BERT</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                 </form>
+                <div id="error-message" class="text-danger mt-2" style="display: none;">Please enter a query first.</div>
             </div>
         </div>
-        <h1 class="py-6 my-6"></h1>
-        <h1 class="py-6 my-6"></h1>
     </div>
 </section>
+
+<script>
+    function validateForm() {
+        var queryField = document.getElementById("queryField").value.trim();
+        if (queryField === "") {
+            document.getElementById("error-message").style.display = "block";
+            return false;
+        }
+        return true;
+    }
+</script>
+
 {% endblock %}
