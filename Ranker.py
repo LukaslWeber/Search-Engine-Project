@@ -211,7 +211,6 @@ class Ranker:
         :param mode: the mode to use for the feedback, either distance or cosine
         :return: the list of the top k documents after the feedback
         """
-        #TODO
         feedback = []
         for sorted_doc in sorted_docs:
             feedback.append(self.embeddings[self.id.index(sorted_doc[0])])
@@ -233,7 +232,6 @@ class Ranker:
         Load the embedding index
         :param embedding path
         """
-        #TODO check if embedding was encoded with the some model
         embedding_index = load_index(embedding_index_path)
         # convert the embedding index to a numpy array
         self.id = []
@@ -277,23 +275,6 @@ class Ranker:
         return sorted(set(relevant_docs))
 
 
-    def listintersection(self,lista, listb):
-        pointerA=0
-        pointerB=0
-        matches =[]
-        print(lista)
-        print(listb)
-        while pointerA< len(lista) and pointerB< len(listb):
-            if lista[pointerA][0]==listb[pointerB][0]:
-                matches.append(lista[pointerA][0])
-                pointerB+=1
-                pointerA+=1
-            elif lista[pointerA][0]<listb[pointerB][0]:
-                pointerA+=1
-            elif lista[pointerA][0]>listb[pointerB][0]:
-                pointerB+=1
-        return matches 
-
     def embedding_ranking(self,query: str) -> list:
         query_embedding = self.embedder.embed(query)
         return self.cosine_similarity(query_embedding)
@@ -319,6 +300,7 @@ class Ranker:
         :param query: the query string
         """
         file_name = query.replace(" ", "_") + "_"+ self.rank_method+ ".txt"
+        print(file_name)
         file_path = os.path.join(self.results_path, file_name)
         with open(file_path, "w") as f:
             for i,result in enumerate(results):
