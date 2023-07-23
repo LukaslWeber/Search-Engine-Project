@@ -5,9 +5,13 @@ import numpy as np
 import os
 import re
 from difflib import SequenceMatcher
+from typing import Tuple
 #Class for doing the ranking of the documents
 
 class Ranker:
+    """
+    Class using different ranking methods to return the top k documents for a given query
+    """
     def __init__(self, index_path: str, inverted_index_path:str, embedding_index_path: str, results_path: str, relevant_docs_count: int=100, ):
         self.index_db = load_index(index_path)
         self.inverted_index_db = load_index(inverted_index_path)
@@ -25,6 +29,7 @@ class Ranker:
         self.b = 0.75
         self.k1 = 1.2
         self.calculate_avgdl() #TODO: calculate the average document length
+        self.rank_methods = ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]
 
 
     def calculate_avgdl(self):
@@ -54,21 +59,24 @@ class Ranker:
             return False
 
     def rank(self, query: str) -> list:
-        #TODO how to get the relevant documents for TD-IDF
-        #just use and 
+        """
+        Rank the documents for the given query using the set ranking method
+        :param query: the query string
+        :return: the list of the top k documents as a list of tuples (url, score)
+        """
 
-        if self.rank_method == "embedding":
+        if self.rank_method == "Feature_embedding":
             sorted_docs = self.embedding_ranking(query)
         else:
             relevant_docs = self.query_union(query)
-            if self.rank_method == "mergev2":
+            if self.rank_method == "Merge":
                 sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)
                 sorted_docs_BM25 = self.BM25(query, relevant_docs)
                 merged_list = sorted_docs_tf_idf[:5]
                 sorted_docs_tf_idf.extend(sorted_docs_BM25[:5])
                 sorted_docs_pseudo_relevance = self.pseudo_relevance_feedback_embedding(merged_list, mode='distance')
                 sorted_docs = self.merge_rankings(sorted_docs_tf_idf, sorted_docs_BM25, sorted_docs_pseudo_relevance)
-            if self.rank_method == "pseudo_relevance_feedback_embedding":
+            if self.rank_method == "Pseudo_relevance_feedback":
                 sorted_docs_tf_idf = self.TF_IDF(query, relevant_docs)[:5]
                 sorted_docs_BM25 = self.BM25(query, relevant_docs)[:5]
                 sorted_docs_tf_idf.extend(sorted_docs_BM25)
@@ -96,6 +104,12 @@ class Ranker:
         return url_domain
 
     def gain(self,url, urls, websites):
+        """
+        Calculate the gain if an url is added to the resultlist
+        :param url: the url to check
+        :param urls: the list of websites already in the resultlist
+        :param websites: the dictionary of websites and their urls
+        """
         url_domain = self.get_url(url)
         if url_domain not in urls:
             gain = 10 #TODO finetuning
@@ -107,7 +121,18 @@ class Ranker:
             gain = (1-average_similarity) * 10/len(other_website_urls) #TODO finetuning
         return gain
     
-    
+    def find_new_documents(self, sorted_docs:list, pointer:int, added_pages:list) -> Tuple[int, str]:
+        """
+        Find pointer for a new document that is not already in the list
+        :param sorted_docs: the list of the top k documents
+        :param pointer: the current pointer
+        :param added_pages: the list of already added pages
+        :return: the new pointer and the url of the new document
+        """
+        while self.index_db[sorted_docs[pointer][0]][0] in added_pages:
+            pointer += 1
+        return pointer, self.index_db[sorted_docs[pointer][0]][0]        
+
 
     def merge_rankings(self, sorted_docs1: list, sorted_docs2: list, sorted_docs3: list) -> list:
         """
@@ -117,10 +142,10 @@ class Ranker:
         :param sorted_docs3: the list of the top k documents for the third method (pseudo relevance feedback)
         :return: the list of the top k documents after the merging
         """
-        #TODO
         merged_ranking = []
         urls = []
         websites ={}
+        added_pages =[]
         tf_idf_factor = 0.5
         bm25= tf_idf_factor =1
         pseudo_relevance_factor = 10
@@ -130,11 +155,11 @@ class Ranker:
         # naive merge take one with biggest increase
         for i in range(self.relevant_docs_count):
             #need to calculate the gain of each potenzial document
-            url1 = self.index_db[sorted_docs1[list1_pointer][0]][0]
-            url2 = self.index_db[sorted_docs2[list2_pointer][0]][0]
-            url3 = self.index_db[sorted_docs3[list3_pointer][0]][0]
+            list1_pointer, url1 = self.find_new_documents(sorted_docs1, list1_pointer, added_pages)
+            list2_pointer, url2 = self.find_new_documents(sorted_docs2, list2_pointer, added_pages)
+            list3_pointer, url3 = self.find_new_documents(sorted_docs3, list3_pointer, added_pages)
             list1_gain = self.gain(url1, urls, websites) + tf_idf_factor * sorted_docs1[list1_pointer][1]
-            list2_gain = self.gain(url2, urls, websites) + sorted_docs2[list2_pointer][1]
+            list2_gain = self.gain(url2, urls, websites) + bm25 * sorted_docs2[list2_pointer][1]
             list3_gain = self.gain(url3, urls, websites) + pseudo_relevance_factor / sorted_docs3[list3_pointer][1]
             print(url1, url2, url3)
             print(list1_gain, list2_gain, list3_gain)
@@ -143,6 +168,7 @@ class Ranker:
                 merged_ranking.append(sorted_docs1[list1_pointer])
                 list1_pointer += 1
                 url = self.get_url(url1)
+                added_pages.append(url1)
                 if url not in urls:
                     urls.append(url)
                 if url not in websites.keys():
@@ -154,6 +180,7 @@ class Ranker:
                 merged_ranking.append(sorted_docs2[list2_pointer])
                 list2_pointer += 1
                 url = self.get_url(url2)
+                added_pages.append(url2)
                 if url not in urls:
                     urls.append(url)
                 if url not in websites.keys():
@@ -165,6 +192,7 @@ class Ranker:
                 merged_ranking.append(sorted_docs3[list3_pointer])
                 list3_pointer += 1
                 url = self.get_url(url3)
+                added_pages.append(url3)
                 if url not in urls:
                     urls.append(url)
                 if url not in websites.keys():
@@ -294,7 +322,7 @@ class Ranker:
         file_path = os.path.join(self.results_path, file_name)
         with open(file_path, "w") as f:
             for i,result in enumerate(results):
-                f.write(str(i) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
+                f.write(str(i+1) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
         
 
 
