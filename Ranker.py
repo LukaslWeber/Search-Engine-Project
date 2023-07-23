@@ -177,7 +177,7 @@ class Ranker:
             elif list2_gain > list1_gain and list2_gain > list3_gain:
                 new_page = sorted_docs2[list2_pointer]
                 new_page[1] = list2_gain
-                merged_ranking.append(list2_gain)
+                merged_ranking.append(new_page)
                 list2_pointer += 1
                 url = self.get_url(url2)
                 added_pages.append(url2)
@@ -303,6 +303,7 @@ class Ranker:
         print(file_name)
         file_path = os.path.join(self.results_path, file_name)
         with open(file_path, "w") as f:
+            print(results)
             for i,result in enumerate(results):
                 f.write(str(i+1) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
         
