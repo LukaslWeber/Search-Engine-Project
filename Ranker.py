@@ -24,11 +24,11 @@ class Ranker:
         if not self.check():
             raise ValueError("The indecies do not have the same length")
         self.embedder = Embedder('bert-base-uncased') #must be set to the same model as the one used for the embedding index
-        self.rank_method = "BM25" #TODO: change to TF-IDF
+        self.rank_method = "BM25" 
         self.results_path = results_path
         self.b = 0.75
         self.k1 = 1.2
-        self.calculate_avgdl() #TODO: calculate the average document length
+        self.calculate_avgdl() 
         self.rank_methods = ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]
 
 
@@ -289,7 +289,6 @@ class Ranker:
         return matches 
 
     def embedding_ranking(self,query: str) -> list:
-        query = preprocessing(query)
         query_embedding = self.embedder.embed(query)
         return self.cosine_similarity(query_embedding)
 
