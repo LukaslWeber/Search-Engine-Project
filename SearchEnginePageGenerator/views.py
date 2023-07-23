@@ -14,6 +14,7 @@ from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstra
 
 # Static variables
 results_per_page = 11
+abstract_length = 300
 
 debug_mode = True
 if not debug_mode:
@@ -52,11 +53,12 @@ def generate_audio_files(query: str, start_index: int, websites: List[Tuple[str,
     for f in os.listdir(audio_dir):
         os.remove(os.path.join(audio_dir, f))
     for i, result in enumerate(websites):
-        link, title, website_text = result
-        tts = gTTS(text=f"Reading result {i + 1}. {title}. {website_text} 'Please open the website for further information'", lang="en")
+        link, title, website_abstract = result
+        # tts = gTTS(text=f"Reading result {i + 1}. {title}. {website_abstract}. Please open the website for further "
+        #                 f"information.", lang="en")
         audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
         audio_path = os.path.join("media", audio_file_name)
-        tts.save(audio_path)
+        # tts.save(audio_path)
         audio_files.append(audio_file_name)
     return audio_files
 
@@ -82,10 +84,7 @@ def generate_titles_and_abstracts(websites : List[str]) -> List[Tuple[str, str, 
     results = []
     for ranked_website in websites:
         website_title, website_text = get_title_and_text(ranked_website)
-        # TODO: Max, hier kannst du den website_text umwandeln in ein abstact. Änder dazu einfach die
-        # abstract_text variable ab.
-        #abstract_text = website_text[:100]
-        abstract_text = get_abstract(website_text)[:300] + '...' 
+        abstract_text = get_abstract(website_text)[:abstract_length] + '...'
         results.append((ranked_website, website_title, abstract_text))
     return results
 
@@ -122,31 +121,31 @@ def search(request):
                              "https://en.wikipedia.org/wiki/T%C3%BCbingen",
                              "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
                              "https://theuselessweb.com/",
+                             "https://en.wikipedia.org/wiki/University_of_T%C3%BCbingen",
+                             "https://theuselessweb.com/",
+                             "https://theuselessweb.com/",
+                             "https://als.wikipedia.org/wiki/Eberhard_Karls_Universit%C3%A4t_T%C3%BCbingen",
+                             "https://theuselessweb.com/",
+                             "https://en.wikipedia.org/wiki/University_of_T%C3%BCbingen",
+                             "https://theuselessweb.com/",
                              # "https://theuselessweb.com/",
                              # "https://theuselessweb.com/",
                              # "https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
+                             # "https://theuselessweb.com/",
                              "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
                              # "https://theuselessweb.com/",
                              # "https://theuselessweb.com/",
@@ -181,13 +180,16 @@ def search(request):
     context = {
         'query': query,
         'search_results': limited_results,
-        'start_index': start_index + results_per_page,
+        'next_start_index': start_index + results_per_page,
+        'previous_start_index': start_index - results_per_page,
         'show_more': show_more,
         'show_previous': show_previous,
         'remaining_elements': remaining_elements,
         'audio_files': audio_files,
         'ranking_method': ranking_method
     }
+    print(context['previous_start_index'])
+    print(context['next_start_index'])
     # print(f"Full results are: ")
     # print(results)
     # print(context)
