@@ -24,5 +24,5 @@ If no folder called "media" exists in the project, please create it. Furhtermore
 
 ## Create Index
 
-To create the index just run `python FocusedWebCrawler.py -n`\
-To restart the crawler run `python FocusedWebCrawler.py -r`, therefore already some files must be stored in the *data_files* folder.
+To create the index just run `python FocusedWebCrawler.py -n`\ or just start the file using PyCharm the interpreter of your choice.
+To restart the crawler run `python FocusedWebCrawler.py -r`, therefore already some files must be stored in the *data_files* folder. If you prefer to do it with your interpreter, you need to create the Crawler-object with the frontier argument of None.
