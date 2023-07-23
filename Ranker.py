@@ -388,30 +388,15 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'data_files_bert_4'
+    path = 'data_files'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
     index_embedding = os.path.join(path, 'embedding_index.joblib')
     result_path = os.path.join(path, 'results')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
-    # ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]
-    for method in ["Merge"]:
+    for method in ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]:
         ranker.rank_method = method
         ranker.rank("food and drinks")
         ranker.rank("tübingen attractions")
-    #ranker.rank_method = "TF-IDF"
-    #ranker.rank("food and drinks")
-    #ranker.rank("tübingen attractions")
-    #ranker.rank_method = "BM25"
-    #ranker.rank("food and drinks")
-    #ranker.rank("tübingen attractions")
-    #ranker.rank_method = "embedding"
-    #ranker.rank("food and drinks")
-    #ranker.rank("tübingen attractions")
-    #ranker.rank_method = "TF-IDF"
-    #ranker.rank("food and drinks")
-    #ranker.rank("tübingen attractions")
-
-    #ranker.rank_method = "TF-IDF"
-    #ranker.rank("food and drinks")
+    
     
