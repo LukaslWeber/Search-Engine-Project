@@ -162,7 +162,9 @@ class Ranker:
             list2_gain = self.gain(url2, urls, websites) + bm25 * sorted_docs2[list2_pointer][1]
             list3_gain = self.gain(url3, urls, websites) + pseudo_relevance_factor / sorted_docs3[list3_pointer][1]
             if list1_gain > list2_gain and list1_gain > list3_gain:
-                merged_ranking.append(sorted_docs1[list1_pointer])
+                new_page = sorted_docs1[list1_pointer]
+                new_page[1] = list1_gain
+                merged_ranking.append(new_page)
                 list1_pointer += 1
                 url = self.get_url(url1)
                 added_pages.append(url1)
@@ -173,7 +175,9 @@ class Ranker:
                 else:
                     websites[url].append(url1)
             elif list2_gain > list1_gain and list2_gain > list3_gain:
-                merged_ranking.append(sorted_docs2[list2_pointer])
+                new_page = sorted_docs2[list2_pointer]
+                new_page[1] = list2_gain
+                merged_ranking.append(list2_gain)
                 list2_pointer += 1
                 url = self.get_url(url2)
                 added_pages.append(url2)
@@ -184,7 +188,9 @@ class Ranker:
                 else:
                     websites[url].append(url2)
             else:
-                merged_ranking.append(sorted_docs3[list3_pointer])
+                new_page = sorted_docs3[list3_pointer]
+                new_page[1] = list3_gain
+                merged_ranking.append(new_page)
                 list3_pointer += 1
                 url = self.get_url(url3)
                 added_pages.append(url3)
