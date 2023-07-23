@@ -38,6 +38,7 @@ user_agent_list = [
     ua.edge
 ]
 
+forbidden_file_endings = [".jpg", ".png", ".jpeg", ".jpf", ".ppt", ".pptx"]
 
 def has_tuebingen(string_to_check: str) -> bool:
     """
@@ -163,7 +164,7 @@ class FocusedWebCrawler:
             _, url = frontier.get()
 
             # If page has already been visited --> Continue loop
-            if url in self.visited:
+            if url in self.visited or is_forbidden_file(url):
                 continue
 
             # skip urls that are disallowed in the robots.txt file
