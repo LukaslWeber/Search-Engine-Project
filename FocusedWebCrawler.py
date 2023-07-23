@@ -368,7 +368,7 @@ def send_get_request(url: str, max_retries: int = 1, retry_delay: float = 2) -> 
         if raw_html_content == b"":
             print(f"Trying user agent identity {idx}")
             retry = urllib3.Retry(total=3, redirect=3)
-            timeout = urllib3.Timeout(total=5.0, connect=2.0, read=2.0)
+            timeout = urllib3.Timeout(total=5.0, connect=3.0, read=3.0)
             headers = {
                 'User-Agent': user_agent,
                 'Accept-Language': '*'
