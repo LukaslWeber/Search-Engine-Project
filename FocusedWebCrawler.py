@@ -20,7 +20,7 @@ from Embedder import Embedder
 from utils import preprocessing
 
 """
-This file describes the Web crawler. It is focused towards english documents which are related to Tübingen.
+This file describes the Web crawler. It is focused towards english documents which are related to Tübingen. 
 """
 
 # User-Agent list for pretending to be a real user when pages detect the crawler
