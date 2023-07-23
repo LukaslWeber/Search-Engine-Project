@@ -15,10 +15,15 @@ from bs4 import BeautifulSoup
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
 # Own imports
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
-    save_index
+    save_index, load_similarity_hash, save_similarity_hash
 from Embedder import Embedder
 from utils import preprocessing
 
+"""
+This file describes the Web crawler. It is focused towards english documents which are related to Tübingen. 
+"""
+
+# User-Agent list for pretending to be a real user when pages detect the crawler
 ua = UserAgent()
 user_agent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0'
@@ -38,74 +43,6 @@ user_agent_list = [
     ua.edge
 ]
 
-
-def has_tuebingen(string_to_check: str) -> bool:
-    """
-    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
-    The uppercase should be ignored here
-    :param string_to_check: The string that is to be checked
-    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
-    """
-    tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
-    tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
-    tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
-
-    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(
-            string_to_check) or tuebingen_reg.search(string_to_check):
-        return True
-
-    return False
-
-
-def has_tuebingen_content(url: str, string_to_check: str) -> bool:
-    """
-    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" or "Tubingen" within
-    the content. The check is case-insensitive. An additional case has been introduced for wikipedia pages. They must
-    contain a form of Tübingen 5 or more times to be relevant as irrelevant Wikipedia pages often contain Tübingen
-    only once in their references.
-    :param url: url of the page to check
-    :param string_to_check: The string that is to be checked
-    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
-    """
-    pattern = r'(t(?:ü|ue|u)?binge[nr])'
-    matches = re.findall(pattern, string_to_check, re.IGNORECASE)
-
-    pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
-
-    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):  # Case for Wikipedia
-        threshold = 5
-    else:  # Case for all other pages
-        threshold = 3
-
-    print(f" threshold for checking occurences of Tübingen is: {threshold}")
-
-    if len(matches) >= threshold or pattern_location.search(string_to_check):
-        return True
-    else:
-        return False
-
-
-def get_priority(contains_tuebingen: bool, language: str) -> int or None:
-    """
-    Returns the priority of a document given the information if it contains Tübingen and its langauge
-    :param contains_tuebingen: bool, Parameter that indicates whether some form of
-    the word "Tübingen" is contained in the document
-    :param language: str, String that represents the abbreviation of the most used language in the document
-    :return: Integer indicating the priority where 1 is the highest and 4 is the lowest priority or None if
-    the document is not of relevance of any sort.
-    """
-    if contains_tuebingen and language == 'en':
-        return 1
-    elif contains_tuebingen and language == 'de':
-        return 2
-    elif language == 'en':
-        return 3
-    elif language == 'de':
-        return 4
-    else:
-        return None
-
-
 class FocusedWebCrawler:
     def __init__(self, max_pages: int = np.inf, frontier: List[str] = None):
         """
@@ -122,9 +59,11 @@ class FocusedWebCrawler:
             index_path = os.path.join("data_files", 'forward_index.joblib')
             inverted_index_path = os.path.join("data_files", "inverted_index.joblib")
             embedding_index_path = os.path.join("data_files", "embedding_index.joblib")
+            simhash_path = os.path.join("data_files", "simhash.joblib")
             self.inverted_index_db = load_index(inverted_index_path)
             self.index_db = load_index(index_path)
             self.index_embeddings_db = load_index(embedding_index_path)
+            self.hashvalues = load_similarity_hash(simhash_path)
         else:
             self.frontier = PriorityQueue()
             for doc in frontier:
@@ -134,13 +73,13 @@ class FocusedWebCrawler:
             self.inverted_index_db = {}
             self.index_embeddings_db = {}
             self.index_embeddings_pre_db = {}
+            # store hashvalues of already indexed pages for duplicate detection
+            self.hashvalues = {}
         # Maximum pages to be indexed
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         # self.identifier.set_languages(['de', 'en', 'fr'])
-        # store hashvalues of already indexed pages for duplicate detection
-        self.hashvalues = {}
 
     def crawl(self, frontier: PriorityQueue, index_db):
         """
@@ -160,7 +99,7 @@ class FocusedWebCrawler:
             _, url = frontier.get()
 
             # If page has already been visited --> Continue loop
-            if url in self.visited:
+            if url in self.visited or is_forbidden_file(url):
                 continue
 
             # skip urls that are disallowed in the robots.txt file
@@ -237,6 +176,7 @@ class FocusedWebCrawler:
                     temp_inverted_index_path = "temp_inverted_index.joblib"
                     temp_embedding_index_path = self.embedder.model_name + " temp_embedding_index_3.joblib"
                     temp_embedding_index_path_pre = self.embedder.model_name + " temp_embedding_index_pre_3.joblib"
+                    temp_simhash_path = "temp_simhash.joblib"
                     temp_visited_path = "temp_visited_pages.json"
                     temp_frontier_path = "temp_frontier_pages.joblib"
 
@@ -245,16 +185,18 @@ class FocusedWebCrawler:
                     save_index(temp_inverted_index_path, self.inverted_index_db)
                     save_index(temp_embedding_index_path, self.index_embeddings_db)
                     save_index(temp_embedding_index_path_pre, self.index_embeddings_pre_db)
+                    save_similarity_hash(temp_simhash_path, self.hashvalues)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
-                    file_folder = "data_files_bert_3"
+                    file_folder = "data_files"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
                     os.replace(temp_embedding_index_path, os.path.join(file_folder, "embedding_index.joblib"))
                     os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
                     os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
+                    os.replace(temp_simhash_path, os.path.join(file_folder, "simhash.joblib"))
 
                     print("Data saved successfully.")
                 except Exception as e:
@@ -568,99 +510,83 @@ def is_duplicate(content: str, previous_hashes, k: int = 5):
     return False
 
 
-# _______________ OLD UNUSED METHODS __________________-
-"""
-def add_to_collection(url: str, page_content: str, filename: str) -> None:
-    Add the URL and page content to a text document in the collection.
-    :param url: The URL of the page.
-    :param page_content: The content of the page.
-    :param filename: The name of the text document.
-    with open(filename, 'a', encoding='utf-8') as file:
-        file.write(f"URL: {url}\n\n")
-        file.write(f"Page Content:\n{page_content}\n\n")
-"""
-#     def crawl(self, frontier: List[str], index: int):
-#         """
-#         Crawls the web with the given frontier
-#         :param frontier: The frontier of known URLs to crawl. You will initially populate this with
-#         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
-#         :param index: The location of the local index storing the discovered documents.
-#         """
-#         num_pages_crawled = 0
-#         # initialize priority queue and add seed urls
-#         pq_frontier = PriorityQueue()
-#         for doc in frontier:
-#             pq_frontier.put((1, doc))
-#
-#         while pq_frontier and num_pages_crawled < self.max_pages:
-#
-#             _, url = pq_frontier.get()
-#
-#             if url in self.page_overview and self.page_overview[url][2] == True:
-#                 continue
-#
-#             # Mark the URL as visited
-#             # self.visited.add(url)
-#             num_pages_crawled += 1
-#
-#             print('crawled:')
-#             print(num_pages_crawled)
-#
-#             if url in self.page_overview:
-#                 page_content = self.page_overview[url][0]
-#                 page_links = self.page_overview[url][1]
-#                 page_language = self.page_overview[url][4]
-#                 page_relevant = self.page_overview[url][3]
-#             else:
-#
-#                 # get page content and page language
-#                 page_links, page_content = get_web_content_and_urls(url)
-#                 page_language = self.detect_language(page_content)
-#                 # print("content:")
-#                 # print(page_content)
-#
-#                 # skip empty pages
-#                 if page_links == "" and page_content == "":
-#                     continue
-#
-#                     # add document to collection if its language is english and content is relevant
-#                 page_relevant = self.is_relevant(page_content, url)
-#                 self.page_overview[url] = (page_content, page_links, True, page_relevant, page_language)
-#
-#             if page_relevant and page_language == 'en':
-#                 add_to_collection(url, page_content, 'collection.txt')
-#
-#             page_links = set(page_links)
-#             if pq_frontier.qsize() > self.max_pages:
-#                 continue
-#             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
-#             for link in page_links:
-#                 if not is_valid_url(link):
-#                     continue
-#
-#                 if link in self.page_overview:
-#                     if self.page_overview[link][2] == True:
-#                         continue
-#                     language = self.page_overview[link][4]
-#                     relevant = self.page_overview[link][3]
-#                 else:
-#                     links, content = get_web_content_and_urls(link)
-#                     relevant = self.is_relevant(content, link)
-#                     language = self.detect_language(content)
-#                     self.page_overview[link] = (content, links, False, relevant, language)
-#
-#                 if relevant and language == 'en':
-#                     priority = 2
-#                 elif relevant:
-#                     priority = 3
-#                 elif language == 'en':
-#                     priority = 4
-#                 else:
-#                     priority = 5
-#
-#                 pq_frontier.put((priority, link))
-#
-#         self.frontier = pq_frontier
+def is_forbidden_file(url:str)->bool:
+    """
+    Checks if the url is a file. If yes, the URL should not be loaded as it is not a HTML document.
+    :param url: String definining the url
+    :return: True if it is forbidden, False if it is okay (HTML document that can be parsed with bs4)
+    """
+    forbidden_file_endings = [".jpg", ".png", ".jpeg", ".pdf", ".ppt", ".pptx"]
+    for ending in forbidden_file_endings:
+        if url.lower().endswith(ending):
+            return True
+    return False
+
+def has_tuebingen(string_to_check: str) -> bool:
+    """
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" within the content.
+    The uppercase should be ignored here
+    :param string_to_check: The string that is to be checked
+    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
+    """
+    tuebingen_umlaut_regexp = re.compile(r"Tübingen", re.IGNORECASE)
+    tuebingen_regexp = re.compile(r"Tuebingen", re.IGNORECASE)
+    tuebingen_reg = re.compile(r"Tubingen", re.IGNORECASE)
+
+    if tuebingen_umlaut_regexp.search(string_to_check) or tuebingen_regexp.search(
+            string_to_check) or tuebingen_reg.search(string_to_check):
+        return True
+
+    return False
+
+
+def has_tuebingen_content(url: str, string_to_check: str) -> bool:
+    """
+    Check if a webpage is relevant based on the presence of the word "Tübingen" or "Tuebingen" or "Tubingen" within
+    the content. The check is case-insensitive. An additional case has been introduced for wikipedia pages. They must
+    contain a form of Tübingen 5 or more times to be relevant as irrelevant Wikipedia pages often contain Tübingen
+    only once in their references.
+    :param url: url of the page to check
+    :param string_to_check: The string that is to be checked
+    :return: True if the webpage is relevant (contains "Tübingen" or "Tuebingen"), False otherwise
+    """
+    pattern = r'(t(?:ü|ue|u)?binge[nr])'
+    matches = re.findall(pattern, string_to_check, re.IGNORECASE)
+
+    pattern_location = re.compile(r'7207[0246] T(?:ü|ue|u)?bingen', re.IGNORECASE)
+
+    if re.search(r'wikipedia', get_base_url(url), re.IGNORECASE):  # Case for Wikipedia
+        threshold = 5
+    else:  # Case for all other pages
+        threshold = 3
+
+    print(f" threshold for checking occurences of Tübingen is: {threshold}")
+
+    if len(matches) >= threshold or pattern_location.search(string_to_check):
+        return True
+    else:
+        return False
+
+
+def get_priority(contains_tuebingen: bool, language: str) -> int or None:
+    """
+    Returns the priority of a document given the information if it contains Tübingen and its langauge
+    :param contains_tuebingen: bool, Parameter that indicates whether some form of
+    the word "Tübingen" is contained in the document
+    :param language: str, String that represents the abbreviation of the most used language in the document
+    :return: Integer indicating the priority where 1 is the highest and 4 is the lowest priority or None if
+    the document is not of relevance of any sort.
+    """
+    if contains_tuebingen and language == 'en':
+        return 1
+    elif contains_tuebingen and language == 'de':
+        return 2
+    elif language == 'en':
+        return 3
+    elif language == 'de':
+        return 4
+    else:
+        return None
 
 
 # -----------------------------

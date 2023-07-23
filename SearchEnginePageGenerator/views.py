@@ -6,28 +6,26 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from gtts.tts import gTTS
 from FocusedWebCrawler import send_get_request
+from Ranker import Ranker
 
 from pysummarization.nlpbase.auto_abstractor import AutoAbstractor
 from pysummarization.tokenizabledoc.simple_tokenizer import SimpleTokenizer
 from pysummarization.abstractabledoc.top_n_rank_abstractor import TopNRankAbstractor
 
-
 # Static variables
 results_per_page = 11
 abstract_length = 300
 
-debug_mode = True
-if not debug_mode:
-    from Ranker import Ranker
-    data_files_path = 'data_files'
-    results_path = os.path.join(data_files_path, 'results')
-    index_path = os.path.join(data_files_path, 'forward_index.joblib')
-    inverted_index_path = os.path.join(data_files_path, 'inverted_index.joblib')
-    embedding_index_path = os.path.join(data_files_path, 'embedding_index.joblib')
-    ranker = Ranker(index_path=index_path,
-                    inverted_index_path=inverted_index_path,
-                    embedding_index_path=embedding_index_path,
-                    results_path=results_path)
+# Paths to data files for creating a ranker object
+data_files_path = 'data_files'
+results_path = os.path.join(data_files_path, 'results')
+index_path = os.path.join(data_files_path, 'forward_index.joblib')
+inverted_index_path = os.path.join(data_files_path, 'inverted_index.joblib')
+embedding_index_path = os.path.join(data_files_path, 'embedding_index.joblib')
+ranker = Ranker(index_path=index_path,
+                inverted_index_path=inverted_index_path,
+                embedding_index_path=embedding_index_path,
+                results_path=results_path)
 
 
 def get_title_and_text(website_url: str) -> Tuple[str, str]:
@@ -54,11 +52,11 @@ def generate_audio_files(query: str, start_index: int, websites: List[Tuple[str,
         os.remove(os.path.join(audio_dir, f))
     for i, result in enumerate(websites):
         link, title, website_abstract = result
-        # tts = gTTS(text=f"Reading result {i + 1}. {title}. {website_abstract}. Please open the website for further "
-        #                 f"information.", lang="en")
+        tts = gTTS(text=f"Reading result {i + 1}. {title}. {website_abstract}. Please open the website for further "
+                        f"information.", lang="en")
         audio_file_name = f"{query}_audio_file_{start_index + i}.mp3"
         audio_path = os.path.join("media", audio_file_name)
-        # tts.save(audio_path)
+        tts.save(audio_path)
         audio_files.append(audio_file_name)
     return audio_files
 
@@ -116,46 +114,8 @@ def search(request):
     # Check if results are already stored in the session
     if 'search_results' not in request.session or 'ranker' not in request.session:
         print("Generating results")
-        if debug_mode:
-            ranker_result = ["https://en.wikipedia.org/wiki/University_of_T%C3%BCbingen",
-                             "https://en.wikipedia.org/wiki/T%C3%BCbingen",
-                             "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
-                             "https://theuselessweb.com/",
-                             "https://en.wikipedia.org/wiki/University_of_T%C3%BCbingen",
-                             "https://theuselessweb.com/",
-                             "https://theuselessweb.com/",
-                             "https://als.wikipedia.org/wiki/Eberhard_Karls_Universit%C3%A4t_T%C3%BCbingen",
-                             "https://theuselessweb.com/",
-                             "https://en.wikipedia.org/wiki/University_of_T%C3%BCbingen",
-                             "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                              "https://theuselessweb.com/",
-                             # "https://theuselessweb.com/",
-                             # "https://theuselessweb.com/",
-                             # "https://theuselessweb.com/",
-                             "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
-                             # "https://theuselessweb.com/",
-                             # "https://theuselessweb.com/",
-                             # "https://theuselessweb.com/",
-                             ]
-        else:
-            print("Generating ranking result")
-            ranker.rank_method = ranking_method
-            ranker_result = ranker.rank(query)
-        print(f"final results: {ranker_result}")
+        ranker.rank_method = ranking_method
+        ranker_result = ranker.rank(query)
         # Store search results and query in the session
         request.session['search_results'] = ranker_result
         request.session['query'] = query

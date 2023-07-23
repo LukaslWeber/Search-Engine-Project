@@ -24,11 +24,11 @@ class Ranker:
         if not self.check():
             raise ValueError("The indecies do not have the same length")
         self.embedder = Embedder('bert-base-uncased') #must be set to the same model as the one used for the embedding index
-        self.rank_method = "BM25" #TODO: change to TF-IDF
+        self.rank_method = "BM25" 
         self.results_path = results_path
         self.b = 0.75
         self.k1 = 1.2
-        self.calculate_avgdl() #TODO: calculate the average document length
+        self.calculate_avgdl() 
         self.rank_methods = ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]
 
 
@@ -146,8 +146,8 @@ class Ranker:
         urls = []
         websites ={}
         added_pages =[]
-        tf_idf_factor = 0.5
-        bm25= tf_idf_factor =1
+        tf_idf_factor = 0.3
+        bm25 =1
         pseudo_relevance_factor = 10
         list1_pointer = 0
         list2_pointer = 0
@@ -161,10 +161,7 @@ class Ranker:
             list1_gain = self.gain(url1, urls, websites) + tf_idf_factor * sorted_docs1[list1_pointer][1]
             list2_gain = self.gain(url2, urls, websites) + bm25 * sorted_docs2[list2_pointer][1]
             list3_gain = self.gain(url3, urls, websites) + pseudo_relevance_factor / sorted_docs3[list3_pointer][1]
-            print(url1, url2, url3)
-            print(list1_gain, list2_gain, list3_gain)
             if list1_gain > list2_gain and list1_gain > list3_gain:
-                print('tf-idf')
                 merged_ranking.append(sorted_docs1[list1_pointer])
                 list1_pointer += 1
                 url = self.get_url(url1)
@@ -176,7 +173,6 @@ class Ranker:
                 else:
                     websites[url].append(url1)
             elif list2_gain > list1_gain and list2_gain > list3_gain:
-                print('bm25')
                 merged_ranking.append(sorted_docs2[list2_pointer])
                 list2_pointer += 1
                 url = self.get_url(url2)
@@ -188,7 +184,6 @@ class Ranker:
                 else:
                     websites[url].append(url2)
             else:
-                print('pseudo')
                 merged_ranking.append(sorted_docs3[list3_pointer])
                 list3_pointer += 1
                 url = self.get_url(url3)
@@ -294,7 +289,6 @@ class Ranker:
         return matches 
 
     def embedding_ranking(self,query: str) -> list:
-        query = preprocessing(query)
         query_embedding = self.embedder.embed(query)
         return self.cosine_similarity(query_embedding)
 
@@ -394,15 +388,17 @@ class Ranker:
     
 
 if __name__ == "__main__":
-    path = 'data_files_bert_3'
+    path = 'data_files_bert_4'
     index = os.path.join(path, 'forward_index.joblib')
     index_inverted = os.path.join(path, 'inverted_index.joblib')
     index_embedding = os.path.join(path, 'embedding_index.joblib')
     result_path = os.path.join(path, 'results')
     ranker = Ranker(index, index_inverted, index_embedding, result_path, 100)
-    ranker.rank_method = "mergev2"
-    ranker.rank("food and drinks")
-    #ranker.rank("tübingen attractions")
+    # ["BM25", "TF-IDF", "Feature_embedding", "Pseudo_relevance_feedback", "Merge"]
+    for method in ["Merge"]:
+        ranker.rank_method = method
+        ranker.rank("food and drinks")
+        ranker.rank("tübingen attractions")
     #ranker.rank_method = "TF-IDF"
     #ranker.rank("food and drinks")
     #ranker.rank("tübingen attractions")
