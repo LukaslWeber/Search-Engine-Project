@@ -120,6 +120,8 @@ def search(request):
                              "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
                              "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
+                             "https://theuselessweb.com/",
+                             "https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
@@ -142,8 +144,9 @@ def search(request):
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
                              #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
-                             #"https://theuselessweb.com/",
+                             "https://towardsdatascience.com/how-to-collect-data-from-any-website-cb8fad9e9ec5",
+                             "https://theuselessweb.com/",
+                             "https://theuselessweb.com/",
                              "https://theuselessweb.com/",
                              ]
         else:

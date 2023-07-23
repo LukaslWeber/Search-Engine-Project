@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
 {% block content %}
-<section class="section">
+<!--<section class="section">-->
     <!--this is the top row with the picture and the search bar as well as the buttons-->
     <div class="container is-widescreen">
         <div class="columns is-centered">
             <div class="column logo_image_div" >
-                <div class="logo" style="margin-top:-50px; margin-bottom: -10px;">
-                    <img src="{% static 'tubingen-bing.png' %}" alt="My Image" style="max-height: 140px;">
+                <div class="logo" href="{% url 'startpage' %}"><!--TODO link to startpage from logo-->
+                    <img src="{% static 'tubingen-bing.png' %}" alt="My Image">
                 </div>
             </div>
             <div class="search-container">
@@ -58,9 +58,9 @@
 
     <!--This is the next row of the page: you searched for and change all playback speeds-->
     <div class="columns is-vcentered">
-        <!--<div class="column">
-            <h6 class="subtitle is-6">You searched for: {{ query }}</h6>
-        </div>-->
+        <div class="column">
+            <h4 class="subtitle is-6">You searched for: {{ query }}</h4>
+        </div>
         <div class="column">
             <div class="control is-expanded dropdown-container">
                 <div class="dropdown-content">
@@ -80,13 +80,14 @@
     </div>
 
 
-    <!--these are all the other search results-->
-    <!--<div class="search-results-container">-->
+
+    <div class="search-result-section">
+        <!--first three results as one column-->
         <div class="columns is-multiline">
-            {% for link, title, content in search_results|slice:"1:11" %}
+            {% for link, title, content in search_results|slice:"0:3" %}
                 {% for audio_file in audio_files %}
                     {% if forloop.counter0 == forloop.parentloop.counter %}
-                        <div class="column is-full"> <!--change to is-half for box layout-->
+                        <div class="column is-full">
                             <div class="box has-background-grey-dark has-text-light has-border">
                                 <a href="{{ link }}" class="hover-link-white">
                                     <p class="website-title"><b>{{ title }}</b></p>
@@ -121,37 +122,46 @@
             {% endfor %}
         </div>
 
-    <!--these are all the other search results-->
-    <div class="columns is-multiline">
-        {% for link, title, content in search_results|slice:"1:11" %}
-            {% for audio_file in audio_files %}
-                {% if forloop.counter0 == forloop.parentloop.counter %}
-                    <div class="column is-full">
-                        <div class="box has-background-grey-dark has-text-light has-border">
-                            <p class="website-title"><b>{{ title }}</b></p>
-                            <div class="search-result-content">
-                                <p>{{ content }}</p>
+        <!--other search results as two columns-->
+        <div class="columns is-multiline">
+ 
+            {% for link, title, content in search_results|slice:"3:11" %}
+                {% for audio_file in audio_files %}
+                    {% if forloop.counter0 == forloop.parentloop.counter %}
+                        <div class="column is-half">
+                            <div class="search-result-container">
+                            <div class="box has-background-grey-dark has-text-light has-border">
+                                <a href="{{ link }}" class="hover-link-white">
+                                    <p class="website-title"><b>{{ title }}</b></p>
+                                    <div class="search-result-content">
+                                        <p>{{ content }}</p>
+                                    </div>
+                                    <p>Link: <a href="{{ link }}" class="hover-link-white">{{ link }}</a></p>
+
+                                    <div class="audio-player">
+                                        <audio src="/media/{{ audio_file}}" id="audio{{ forloop.parentloop.counter }}" controls></audio>
+                                        <label for="speed">Speed:</label>
+                                        <select id="speed" onchange="changePlaybackSpeed({{ forloop.parentloop.counter }}, this.value)">
+                                            <option value="1">1x</option>
+                                            <option value="1.25">1.25x</option>
+                                            <option value="1.5">1.5x</option>
+                                            <option value="1.75">1.75x</option>
+                                            <option value="2">2x</option>
+                                            <option value="2.25">2.25x</option>
+                                            <option value="2.5">2.5x</option>
+                                        </select>
+                                    </div>
+                                </a>
                             </div>
-                            <div class="audio-player">
-                                <audio src="/media/{{ audio_file}}" id="audio{{ forloop.parentloop.counter }}" controls></audio>
-                                <label for="speed">Speed:</label>
-                                <select id="speed" onchange="changePlaybackSpeed({{ forloop.parentloop.counter }}, this.value)">
-                                    <option value="1">1x</option>
-                                    <option value="1.25">1.25x</option>
-                                    <option value="1.5">1.5x</option>
-                                    <option value="1.75">1.75x</option>
-                                    <option value="2">2x</option>
-                                    <option value="2.25">2.25x</option>
-                                    <option value="2.5">2.5x</option>
-                                </select>
                             </div>
-                            <p>Link: <a href="{{ link }}">{{ link }}</a></p>
                         </div>
-                    </div>
-                {% endif %}
+                    {% endif %}
+                {% endfor %}
             {% endfor %}
-        {% endfor %}
+        </div>
     </div>
+
+
 
     {% if show_previous %}
         <form class="form" action="/search/" method="get" style="display:inline;">
@@ -229,5 +239,5 @@
 
     
 
-</section>
+<!--</section>-->
 {% endblock %}

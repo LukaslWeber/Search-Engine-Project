@@ -34,6 +34,7 @@
             }
 
 
+
 /*landing page css */
             .title, .label, .subtitle {
                 color: var(--white-smoke);
@@ -116,6 +117,16 @@
 
 /*search view css */ 
 
+    /*logo*/
+            /*.logo{*/
+            /*margin-top: 2rem;*/
+            /*margin-bottom: -10px;*/
+
+            .logo img{
+            width: 200%;
+            height: 200%;
+            }
+
 
     /*search bar*/
             .input:focus {
@@ -186,8 +197,24 @@
 
     /*search result box*/
             .columns{
-                display:flex;
+                /*display:flex;*/
                 align-items: center;
+                background-color: var(--dark-grey);
+                padding: 0;
+                margin-left: 5rem;
+                margin-right: 5rem;
+            }
+
+            /*set top padding above logo and search bar**/
+            .container, .search-container{
+                padding: 2rem;
+            }
+
+            /*wrapper for same background-color for all results*/ 
+            .search-result-section{
+                background-color: var(--dark-grey);
+                padding: 0;
+                margin: 0;
             }
 
             .website-title{
@@ -210,14 +237,6 @@
                 color: var(--white-smoke);
                 text-decoration: none;
             }
-
-            
-    /*all playback speeds*/
-
-
-
-    /*search result slider
-
 
 
     /*audio player*/
