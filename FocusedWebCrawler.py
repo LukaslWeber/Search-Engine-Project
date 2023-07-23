@@ -256,7 +256,7 @@ class FocusedWebCrawler:
                     save_frontier_pages(temp_frontier_path, frontier)
 
                     # If all saves are successful, move the temporary files to the actual save locations
-                    file_folder = "data_files_bert_3"
+                    file_folder = "data_files_bert_5"
                     os.replace(temp_index_path, os.path.join(file_folder, "forward_index.joblib"))
                     os.replace(temp_embedding_index_path, os.path.join(file_folder, "embedding_index.joblib"))
                     os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
