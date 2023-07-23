@@ -162,7 +162,9 @@ class Ranker:
             list2_gain = self.gain(url2, urls, websites) + bm25 * sorted_docs2[list2_pointer][1]
             list3_gain = self.gain(url3, urls, websites) + pseudo_relevance_factor / sorted_docs3[list3_pointer][1]
             if list1_gain > list2_gain and list1_gain > list3_gain:
-                merged_ranking.append(sorted_docs1[list1_pointer])
+                new_page = sorted_docs1[list1_pointer]
+                new_page[1] = list1_gain
+                merged_ranking.append(new_page)
                 list1_pointer += 1
                 url = self.get_url(url1)
                 added_pages.append(url1)
@@ -173,7 +175,9 @@ class Ranker:
                 else:
                     websites[url].append(url1)
             elif list2_gain > list1_gain and list2_gain > list3_gain:
-                merged_ranking.append(sorted_docs2[list2_pointer])
+                new_page = sorted_docs2[list2_pointer]
+                new_page[1] = list2_gain
+                merged_ranking.append(new_page)
                 list2_pointer += 1
                 url = self.get_url(url2)
                 added_pages.append(url2)
@@ -184,7 +188,9 @@ class Ranker:
                 else:
                     websites[url].append(url2)
             else:
-                merged_ranking.append(sorted_docs3[list3_pointer])
+                new_page = sorted_docs3[list3_pointer]
+                new_page[1] = list3_gain
+                merged_ranking.append(new_page)
                 list3_pointer += 1
                 url = self.get_url(url3)
                 added_pages.append(url3)
@@ -205,7 +211,6 @@ class Ranker:
         :param mode: the mode to use for the feedback, either distance or cosine
         :return: the list of the top k documents after the feedback
         """
-        #TODO
         feedback = []
         for sorted_doc in sorted_docs:
             feedback.append(self.embeddings[self.id.index(sorted_doc[0])])
@@ -227,7 +232,6 @@ class Ranker:
         Load the embedding index
         :param embedding path
         """
-        #TODO check if embedding was encoded with the some model
         embedding_index = load_index(embedding_index_path)
         # convert the embedding index to a numpy array
         self.id = []
@@ -271,23 +275,6 @@ class Ranker:
         return sorted(set(relevant_docs))
 
 
-    def listintersection(self,lista, listb):
-        pointerA=0
-        pointerB=0
-        matches =[]
-        print(lista)
-        print(listb)
-        while pointerA< len(lista) and pointerB< len(listb):
-            if lista[pointerA][0]==listb[pointerB][0]:
-                matches.append(lista[pointerA][0])
-                pointerB+=1
-                pointerA+=1
-            elif lista[pointerA][0]<listb[pointerB][0]:
-                pointerA+=1
-            elif lista[pointerA][0]>listb[pointerB][0]:
-                pointerB+=1
-        return matches 
-
     def embedding_ranking(self,query: str) -> list:
         query_embedding = self.embedder.embed(query)
         return self.cosine_similarity(query_embedding)
@@ -313,8 +300,10 @@ class Ranker:
         :param query: the query string
         """
         file_name = query.replace(" ", "_") + "_"+ self.rank_method+ ".txt"
+        print(file_name)
         file_path = os.path.join(self.results_path, file_name)
         with open(file_path, "w") as f:
+            print(results)
             for i,result in enumerate(results):
                 f.write(str(i+1) + "\t"+ str(self.index_db[result[0]][0]) + "\t" + str(result[1]) + "\n")
         
