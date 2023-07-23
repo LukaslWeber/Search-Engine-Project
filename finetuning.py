@@ -47,7 +47,7 @@ if __name__ == "__main__":
         'https://viel-unterwegs.de/reiseziele/deutschland/baden-wuerttemberg/tuebingen-sehenswuerdigkeiten/',
         'https://www.tuebingen-info.de/veranstaltungen/tuebinger-stocherkahnrennen-be17d361c0',
         'https://de.wikipedia.org/wiki/Stocherkahnrennen',
-        'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/stocherkahn-rennen-in-tuebingen-100.htm',l
+        'https://www.swr.de/swraktuell/baden-wuerttemberg/tuebingen/stocherkahn-rennen-in-tuebingen-100.htm',
         'https://www.tripadvisor.de/Attractions-g187275-Activities-c26-t143-Germany.html',
         'https://www.yelp.com/search?cflt=shoppingcenters&find_loc=Stuttgart%2C+Baden-Württemberg',
         'https://www.tripadvisor.de/Restaurants-g198539-c11-Tubingen_Baden_Wurttemberg.html',
@@ -111,5 +111,6 @@ if __name__ == "__main__":
         'https://de.wikipedia.org/wiki/Morgenstelle',
         'https://www.bahnhof.de/en/tuebingen-hbf',
     ]
-    crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
+    #crawler = FocusedWebCrawler(frontier=urls, max_pages=10000)
+    crawler = FocusedWebCrawler(frontier=None, max_pages=10000)
     crawler.crawl(frontier=crawler.frontier, index_db=crawler.index_db)
