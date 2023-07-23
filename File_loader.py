@@ -43,7 +43,7 @@ def save_frontier_pages(file_name: str, frontier_pages: PriorityQueue):
     dump(frontier_pages.to_list(), file_name)
 
 
-def save_similarity_hash(similarity_hash_dict, simhash_path: str):
+def save_similarity_hash(simhash_path: str, similarity_hash_dict: Dict[str, str]):
     """
     Save a dictionary containing URL keys and their corresponding similarity hash values.
     Exceptions need to be handled when calling the method and are not taken care of within.

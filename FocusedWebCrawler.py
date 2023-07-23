@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 from py3langid.langid import LanguageIdentifier, MODEL_FILE
 # Own imports
 from File_loader import load_frontier, load_visited_pages, load_index, save_frontier_pages, save_visited_pages, \
-    save_index
+    save_index, load_similarity_hash, save_similarity_hash
 from Embedder import Embedder
 from utils import preprocessing
 
@@ -122,9 +122,11 @@ class FocusedWebCrawler:
             index_path = os.path.join("data_files", 'forward_index.joblib')
             inverted_index_path = os.path.join("data_files", "inverted_index.joblib")
             embedding_index_path = os.path.join("data_files", "embedding_index.joblib")
+            simhash_path = os.path.join("data_files", "simhash.joblib")
             self.inverted_index_db = load_index(inverted_index_path)
             self.index_db = load_index(index_path)
             self.index_embeddings_db = load_index(embedding_index_path)
+            self.hashvalues = load_similarity_hash(simhash_path)
         else:
             self.frontier = PriorityQueue()
             for doc in frontier:
@@ -134,13 +136,14 @@ class FocusedWebCrawler:
             self.inverted_index_db = {}
             self.index_embeddings_db = {}
             self.index_embeddings_pre_db = {}
+            # store hashvalues of already indexed pages for duplicate detection
+            self.hashvalues = {}
         # Maximum pages to be indexed
         self.max_pages = max_pages
         # Language identifier for checking the language of a document
         self.identifier = LanguageIdentifier.from_pickled_model(MODEL_FILE, norm_probs=True)
         # self.identifier.set_languages(['de', 'en', 'fr'])
-        # store hashvalues of already indexed pages for duplicate detection
-        self.hashvalues = {}
+
 
     def crawl(self, frontier: PriorityQueue, index_db):
         """
@@ -237,14 +240,17 @@ class FocusedWebCrawler:
                     temp_inverted_index_path = "temp_inverted_index.joblib"
                     temp_embedding_index_path = self.embedder.model_name + " temp_embedding_index_3.joblib"
                     temp_embedding_index_path_pre = self.embedder.model_name + " temp_embedding_index_pre_3.joblib"
+                    temp_simhash_path = "temp_simhash.joblib"
                     temp_visited_path = "temp_visited_pages.json"
                     temp_frontier_path = "temp_frontier_pages.joblib"
+
 
                     # Save to temporary files
                     save_index(temp_index_path, self.index_db)
                     save_index(temp_inverted_index_path, self.inverted_index_db)
                     save_index(temp_embedding_index_path, self.index_embeddings_db)
                     save_index(temp_embedding_index_path_pre, self.index_embeddings_pre_db)
+                    save_similarity_hash(temp_simhash_path, self.hashvalues)
                     save_visited_pages(temp_visited_path, self.visited)
                     save_frontier_pages(temp_frontier_path, frontier)
 
@@ -255,6 +261,7 @@ class FocusedWebCrawler:
                     os.replace(temp_inverted_index_path, os.path.join(file_folder, "inverted_index.joblib"))
                     os.replace(temp_visited_path, os.path.join(file_folder, "visited_pages.json"))
                     os.replace(temp_frontier_path, os.path.join(file_folder, "frontier_pages.joblib"))
+                    os.replace(temp_simhash_path, os.path.join(file_folder, "simhash.joblib"))
 
                     print("Data saved successfully.")
                 except Exception as e:
@@ -567,100 +574,6 @@ def is_duplicate(content: str, previous_hashes, k: int = 5):
 
     return False
 
-
-# _______________ OLD UNUSED METHODS __________________-
-"""
-def add_to_collection(url: str, page_content: str, filename: str) -> None:
-    Add the URL and page content to a text document in the collection.
-    :param url: The URL of the page.
-    :param page_content: The content of the page.
-    :param filename: The name of the text document.
-    with open(filename, 'a', encoding='utf-8') as file:
-        file.write(f"URL: {url}\n\n")
-        file.write(f"Page Content:\n{page_content}\n\n")
-"""
-#     def crawl(self, frontier: List[str], index: int):
-#         """
-#         Crawls the web with the given frontier
-#         :param frontier: The frontier of known URLs to crawl. You will initially populate this with
-#         your seed set of URLs and later maintain all discovered (but not yet crawled) URLs here.
-#         :param index: The location of the local index storing the discovered documents.
-#         """
-#         num_pages_crawled = 0
-#         # initialize priority queue and add seed urls
-#         pq_frontier = PriorityQueue()
-#         for doc in frontier:
-#             pq_frontier.put((1, doc))
-#
-#         while pq_frontier and num_pages_crawled < self.max_pages:
-#
-#             _, url = pq_frontier.get()
-#
-#             if url in self.page_overview and self.page_overview[url][2] == True:
-#                 continue
-#
-#             # Mark the URL as visited
-#             # self.visited.add(url)
-#             num_pages_crawled += 1
-#
-#             print('crawled:')
-#             print(num_pages_crawled)
-#
-#             if url in self.page_overview:
-#                 page_content = self.page_overview[url][0]
-#                 page_links = self.page_overview[url][1]
-#                 page_language = self.page_overview[url][4]
-#                 page_relevant = self.page_overview[url][3]
-#             else:
-#
-#                 # get page content and page language
-#                 page_links, page_content = get_web_content_and_urls(url)
-#                 page_language = self.detect_language(page_content)
-#                 # print("content:")
-#                 # print(page_content)
-#
-#                 # skip empty pages
-#                 if page_links == "" and page_content == "":
-#                     continue
-#
-#                     # add document to collection if its language is english and content is relevant
-#                 page_relevant = self.is_relevant(page_content, url)
-#                 self.page_overview[url] = (page_content, page_links, True, page_relevant, page_language)
-#
-#             if page_relevant and page_language == 'en':
-#                 add_to_collection(url, page_content, 'collection.txt')
-#
-#             page_links = set(page_links)
-#             if pq_frontier.qsize() > self.max_pages:
-#                 continue
-#             # Add newly discovered URLs to the frontier, assign priority 1 to topic relevant docs
-#             for link in page_links:
-#                 if not is_valid_url(link):
-#                     continue
-#
-#                 if link in self.page_overview:
-#                     if self.page_overview[link][2] == True:
-#                         continue
-#                     language = self.page_overview[link][4]
-#                     relevant = self.page_overview[link][3]
-#                 else:
-#                     links, content = get_web_content_and_urls(link)
-#                     relevant = self.is_relevant(content, link)
-#                     language = self.detect_language(content)
-#                     self.page_overview[link] = (content, links, False, relevant, language)
-#
-#                 if relevant and language == 'en':
-#                     priority = 2
-#                 elif relevant:
-#                     priority = 3
-#                 elif language == 'en':
-#                     priority = 4
-#                 else:
-#                     priority = 5
-#
-#                 pq_frontier.put((priority, link))
-#
-#         self.frontier = pq_frontier
 
 
 # -----------------------------
