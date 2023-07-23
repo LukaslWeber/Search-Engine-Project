@@ -18,7 +18,7 @@ Set the Django Project root to the Project folder and point the "settings" to th
 You should then be able to create a Django run configuration with the type Django Server. 
 In our case, Environment variables were: "PYTHONUNBUFFERED=1;DJANGO_SETTINGS_MODULE=SearchEngine.settings"
 
-If no folder called "media" exists in the project, please create it. 
+If no folder called "media" exists in the project, please create it. Furhtermore if no folder called "results" is in "data_files", please also create it.
 
 ## Create Index
 
